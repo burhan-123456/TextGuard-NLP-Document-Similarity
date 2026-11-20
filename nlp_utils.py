@@ -53,6 +53,15 @@ def document_statistics(text):
 
 
 def get_common_keywords(text1, text2):
-    words1 = set(preprocess_text(text1, True, True).split())
-    words2 = set(preprocess_text(text2, True, True).split())
-    return sorted(words1.intersection(words2))
+    a = set(preprocess_text(text1, True, True).split())
+    b = set(preprocess_text(text2, True, True).split())
+    return sorted(a & b)
+
+
+def get_unique_keywords(text1, text2):
+    a = set(preprocess_text(text1, True, True).split())
+    b = set(preprocess_text(text2, True, True).split())
+    return {
+        "document1": sorted(a - b),
+        "document2": sorted(b - a)
+    }
