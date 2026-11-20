@@ -12,7 +12,8 @@ from nlp_utils import (
     get_similar_sentences, plagiarism_risk_summary,
     similarity_distribution, statistics_comparison,
     sentence_similarity_matrix, sentence_results_csv,
-    generate_text_report, word_frequency, top_keyword_frequencies
+    generate_text_report, word_frequency, top_keyword_frequencies,
+    similarity_coverage
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -66,6 +67,7 @@ if st.button("Compare Documents", type="primary"):
         c1.metric("Similarity Score", f"{score:.2f}%")
         c2.metric("Similarity Level", level)
         st.progress(min(max(score / 100, 0.0), 1.0))
+
         if level == "High":
             st.error("High textual similarity detected.")
         elif level == "Moderate":
@@ -165,36 +167,41 @@ if st.button("Compare Documents", type="primary"):
         st.subheader("Word Frequency Analysis")
         freq1, freq2 = word_frequency(text1), word_frequency(text2)
         c1, c2 = st.columns(2)
-        with c1:
-            st.write("**Document 1 - Top Words**")
-            st.dataframe(pd.DataFrame(list(freq1.items()), columns=["Word", "Frequency"]))
-        with c2:
-            st.write("**Document 2 - Top Words**")
-            st.dataframe(pd.DataFrame(list(freq2.items()), columns=["Word", "Frequency"]))
+        c1.write("**Document 1 - Top Words**")
+        c1.dataframe(pd.DataFrame(list(freq1.items()), columns=["Word", "Frequency"]))
+        c2.write("**Document 2 - Top Words**")
+        c2.dataframe(pd.DataFrame(list(freq2.items()), columns=["Word", "Frequency"]))
 
         st.subheader("Top Keyword Frequency Charts")
         c1, c2 = st.columns(2)
-        with c1:
-            st.write("**Document 1 Keywords**")
-            keywords1 = top_keyword_frequencies(text1)
-            if keywords1:
-                st.bar_chart(pd.DataFrame({
-                    "Keyword": list(keywords1.keys()),
-                    "Frequency": list(keywords1.values())
-                }).set_index("Keyword"))
-            else:
-                st.info("No keywords available.")
+        for column, text, label in [
+            (c1, text1, "Document 1 Keywords"),
+            (c2, text2, "Document 2 Keywords")
+        ]:
+            with column:
+                st.write(f"**{label}**")
+                keywords = top_keyword_frequencies(text)
+                if keywords:
+                    st.bar_chart(pd.DataFrame({
+                        "Keyword": list(keywords.keys()),
+                        "Frequency": list(keywords.values())
+                    }).set_index("Keyword"))
+                else:
+                    st.info("No keywords available.")
 
-        with c2:
-            st.write("**Document 2 Keywords**")
-            keywords2 = top_keyword_frequencies(text2)
-            if keywords2:
-                st.bar_chart(pd.DataFrame({
-                    "Keyword": list(keywords2.keys()),
-                    "Frequency": list(keywords2.values())
-                }).set_index("Keyword"))
-            else:
-                st.info("No keywords available.")
+        st.subheader("Bidirectional Similarity Coverage")
+        coverage = similarity_coverage(text1, text2, threshold)
+        c1, c2 = st.columns(2)
+        c1.metric("Document 1 Coverage", f"{coverage['document1']:.2f}%")
+        c2.metric("Document 2 Coverage", f"{coverage['document2']:.2f}%")
+        st.bar_chart(pd.DataFrame({
+            "Document": ["Document 1", "Document 2"],
+            "Coverage (%)": [coverage["document1"], coverage["document2"]]
+        }).set_index("Document"))
+        st.caption(
+            f"Document 1: {coverage['matched1']}/{coverage['total1']} sentences matched. "
+            f"Document 2: {coverage['matched2']}/{coverage['total2']} sentences matched."
+        )
 
         st.subheader("Download Comparison Report")
         report = generate_text_report(text1, text2, score, results, threshold)

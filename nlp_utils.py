@@ -37,11 +37,7 @@ def calculate_similarity(text1, text2, remove_stopwords=False, apply_stemming=Fa
 
 
 def classify_similarity(score):
-    if score >= 70:
-        return "High"
-    if score >= 40:
-        return "Moderate"
-    return "Low"
+    return "High" if score >= 70 else "Moderate" if score >= 40 else "Low"
 
 
 def read_txt_file(file):
@@ -49,8 +45,7 @@ def read_txt_file(file):
 
 
 def read_pdf_file(file):
-    reader = PdfReader(file)
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    return "\n".join(p.extract_text() or "" for p in PdfReader(file).pages)
 
 
 def split_sentences(text):
@@ -82,7 +77,10 @@ def get_unique_keywords(text1, text2):
 
 
 def find_duplicate_sentences(text1, text2):
-    normalized = {preprocess_text(s) for s in split_sentences(text2)}
+    normalized = {
+        preprocess_text(s) for s in split_sentences(text2)
+        if preprocess_text(s)
+    }
     duplicates = []
     for sentence in split_sentences(text1):
         cleaned = preprocess_text(sentence)
@@ -94,12 +92,14 @@ def find_duplicate_sentences(text1, text2):
 def sentence_similarity_analysis(text1, text2):
     results = []
     sentences2 = split_sentences(text2)
+
     for sentence in split_sentences(text1):
         best_score, best_match = 0.0, ""
         for candidate in sentences2:
             score = calculate_similarity(sentence, candidate)
             if score > best_score:
                 best_score, best_match = score, candidate
+
         results.append({
             "sentence": sentence,
             "best_match": best_match,
@@ -109,8 +109,10 @@ def sentence_similarity_analysis(text1, text2):
 
 
 def get_similar_sentences(text1, text2, threshold=60):
-    return [r for r in sentence_similarity_analysis(text1, text2)
-            if r["similarity"] >= threshold]
+    return [
+        r for r in sentence_similarity_analysis(text1, text2)
+        if r["similarity"] >= threshold
+    ]
 
 
 def plagiarism_risk_summary(text1, text2, threshold=70):
@@ -122,9 +124,11 @@ def plagiarism_risk_summary(text1, text2, threshold=70):
             "flagged_percentage": 0.0,
             "risk": "Not Available"
         }
+
     flagged = sum(r["similarity"] >= threshold for r in results)
     percentage = flagged / len(results) * 100
     risk = "High" if percentage >= 60 else "Moderate" if percentage >= 30 else "Low"
+
     return {
         "total_sentences": len(results),
         "flagged_sentences": flagged,
@@ -177,14 +181,11 @@ def generate_text_report(text1, text2, score, results, threshold=60):
         f"Overall Similarity: {score:.2f}%",
         f"Similarity Level: {classify_similarity(score)}",
         "",
-        "DOCUMENT 1 STATISTICS",
-        str(stats1),
+        "DOCUMENT 1 STATISTICS", str(stats1),
         "",
-        "DOCUMENT 2 STATISTICS",
-        str(stats2),
+        "DOCUMENT 2 STATISTICS", str(stats2),
         "",
-        "COMMON KEYWORDS",
-        ", ".join(common) or "None",
+        "COMMON KEYWORDS", ", ".join(common) or "None",
         "",
         "UNIQUE KEYWORDS - DOCUMENT 1",
         ", ".join(unique["document1"]) or "None",
@@ -194,7 +195,6 @@ def generate_text_report(text1, text2, score, results, threshold=60):
         "",
         "EXACT DUPLICATE SENTENCES"
     ]
-
     lines.extend(duplicates if duplicates else ["None"])
     lines.extend(["", "SENTENCE SIMILARITY RESULTS"])
 
@@ -207,7 +207,6 @@ def generate_text_report(text1, text2, score, results, threshold=60):
         ])
 
     lines.extend([
-        "",
         f"Selected Display Threshold: {threshold}%",
         f"Risk Level: {summary['risk']}",
         f"Flagged Sentences (70% threshold): {summary['flagged_sentences']}",
@@ -219,10 +218,32 @@ def generate_text_report(text1, text2, score, results, threshold=60):
 
 
 def word_frequency(text, top_n=10):
-    cleaned = preprocess_text(text, remove_stopwords=True)
-    words = [word for word in cleaned.split() if len(word) > 1]
+    words = [
+        word for word in preprocess_text(text, True).split()
+        if len(word) > 1
+    ]
     return dict(Counter(words).most_common(top_n))
 
 
 def top_keyword_frequencies(text, top_n=10):
     return word_frequency(text, top_n)
+
+
+def similarity_coverage(text1, text2, threshold=60):
+    forward = sentence_similarity_analysis(text1, text2)
+    reverse = sentence_similarity_analysis(text2, text1)
+
+    def coverage(results):
+        if not results:
+            return 0.0
+        matched = sum(r["similarity"] >= threshold for r in results)
+        return round(matched / len(results) * 100, 2)
+
+    return {
+        "document1": coverage(forward),
+        "document2": coverage(reverse),
+        "matched1": sum(r["similarity"] >= threshold for r in forward),
+        "matched2": sum(r["similarity"] >= threshold for r in reverse),
+        "total1": len(forward),
+        "total2": len(reverse)
+    }
