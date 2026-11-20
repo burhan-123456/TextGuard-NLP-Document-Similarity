@@ -16,12 +16,16 @@ from nlp_utils import (
     generate_text_report, word_frequency, top_keyword_frequencies,
     similarity_coverage, generate_json_report, analysis_summary,
     highlight_sentence, sort_sentence_results, search_sentence_results,
-    generate_html_report, word_level_comparison
+    generate_html_report, word_level_comparison, create_history_entry
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity & Plagiarism Screening")
+
+# Commit 42: initialize session history
+if "comparison_history" not in st.session_state:
+    st.session_state.comparison_history = []
 
 method = st.radio("Input Method", ["Enter Text", "Upload Documents"], horizontal=True)
 text1, text2 = "", ""
@@ -49,6 +53,7 @@ else:
             return ""
 
     text1, text2 = extract_file(file1), extract_file(file2)
+
     if text1:
         with st.expander("Preview Document 1"):
             st.text(text1[:3000])
@@ -62,6 +67,7 @@ with c1:
     remove_stopwords = st.checkbox("Remove Stopwords")
 with c2:
     apply_stemming = st.checkbox("Apply Stemming")
+
 threshold = st.slider("Sentence Similarity Threshold (%)", 0, 100, 60)
 min_words = st.slider("Minimum Words Per Sentence", 1, 20, 1)
 keyword_limit = st.slider("Number of Top Keywords", 5, 30, 10)
@@ -80,6 +86,13 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
         sentences1 = split_sentences(text1, min_words)
         sentences2 = split_sentences(text2, min_words)
         coverage = similarity_coverage(text1, text2, threshold, min_words)
+
+        # Commit 42: store this comparison
+        entry = create_history_entry(
+            text1, text2, score, threshold, min_words,
+            remove_stopwords, apply_stemming
+        )
+        st.session_state.comparison_history.append(entry)
 
         st.divider()
         st.subheader("Analysis Dashboard")
@@ -176,6 +189,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.dataframe(pd.DataFrame(
                 filtered, columns=["sentence", "best_match", "similarity"]
             ), use_container_width=True)
+
             st.download_button(
                 "Download Sentence CSV", sentence_results_csv(filtered),
                 "sentence_similarity.csv", "text/csv"
@@ -280,7 +294,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 columns=["Word", "Frequency"]
             ))
 
-            # Commit 41: word-level comparison
             st.subheader("Word-Level Comparison")
             word_rows = word_level_comparison(text1, text2)
             word_filter = st.selectbox(
@@ -289,7 +302,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             )
             if word_filter != "All":
                 word_rows = [r for r in word_rows if r["Status"] == word_filter]
-
             st.metric("Displayed Words", len(word_rows))
             st.dataframe(pd.DataFrame(
                 word_rows,
@@ -335,3 +347,32 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 ))
 
         st.caption("Text similarity is not proof of plagiarism.")
+
+# Commit 42: history remains visible after Streamlit reruns
+st.divider()
+st.subheader("📜 Comparison History")
+
+history = st.session_state.comparison_history
+
+if history:
+    st.metric("Comparisons in Current Session", len(history))
+    st.dataframe(
+        pd.DataFrame(history),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.download_button(
+        "Download History CSV",
+        data=pd.DataFrame(history).to_csv(index=False).encode("utf-8-sig"),
+        file_name="textguard_history.csv",
+        mime="text/csv"
+    )
+
+    if st.button("Clear Comparison History"):
+        st.session_state.comparison_history = []
+        st.rerun()
+else:
+    st.info("No comparisons saved yet. Compare two documents to start your history.")
+
+st.caption("History is stored only in this Streamlit session, not in a database.")
