@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 
 from nlp_utils import (
     preprocess_text, calculate_similarity, jaccard_similarity,
-    classify_similarity, read_txt_file, read_pdf_file,
-    document_statistics, get_common_keywords, get_unique_keywords,
-    split_sentences, find_duplicate_sentences, sentence_similarity_analysis,
-    get_similar_sentences, plagiarism_risk_summary, similarity_distribution,
-    statistics_comparison, sentence_similarity_matrix, sentence_results_csv,
+    bigram_similarity, common_bigrams, classify_similarity,
+    read_txt_file, read_pdf_file, document_statistics,
+    get_common_keywords, get_unique_keywords, split_sentences,
+    find_duplicate_sentences, sentence_similarity_analysis,
+    get_similar_sentences, plagiarism_risk_summary,
+    similarity_distribution, statistics_comparison,
+    sentence_similarity_matrix, sentence_results_csv,
     generate_text_report, word_frequency, top_keyword_frequencies,
     similarity_coverage, generate_json_report, analysis_summary
 )
@@ -18,7 +20,6 @@ from nlp_utils import (
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity & Plagiarism Screening")
-st.write("Compare documents using TF-IDF, cosine similarity, and Jaccard similarity.")
 
 method = st.radio("Choose Input Method", ["Enter Text", "Upload Documents"], horizontal=True)
 text1, text2 = "", ""
@@ -46,6 +47,7 @@ else:
             return ""
 
     text1, text2 = extract_file(file1), extract_file(file2)
+
     if text1:
         with st.expander("Preview Document 1"):
             st.text(text1[:3000])
@@ -68,6 +70,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
     else:
         score = calculate_similarity(text1, text2, remove_stopwords, apply_stemming)
         jaccard = jaccard_similarity(text1, text2, remove_stopwords, apply_stemming)
+        bigram = bigram_similarity(text1, text2, remove_stopwords, apply_stemming)
         results = sentence_similarity_analysis(text1, text2)
         summary = analysis_summary(text1, text2, score, threshold)
         stats = statistics_comparison(text1, text2)
@@ -79,7 +82,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("TF-IDF Similarity", f"{score:.2f}%")
         c2.metric("Jaccard Similarity", f"{jaccard:.2f}%")
-        c3.metric("Matching Keywords", summary["common_keywords"])
+        c3.metric("Bigram Similarity", f"{bigram:.2f}%")
         c4.metric("Exact Duplicates", summary["exact_duplicates"])
         st.progress(min(max(score / 100, 0.0), 1.0))
         st.write("**Similarity Level:**", summary["similarity_level"])
@@ -102,13 +105,14 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1.write(stats["Document 1"])
             c2.write("**Document 2**")
             c2.write(stats["Document 2"])
+
             st.subheader("Statistics Comparison Chart")
             st.bar_chart(pd.DataFrame(stats))
 
             st.subheader("Similarity Method Comparison")
             st.bar_chart(pd.DataFrame({
-                "Method": ["TF-IDF Cosine", "Jaccard"],
-                "Similarity (%)": [score, jaccard]
+                "Method": ["TF-IDF Cosine", "Jaccard", "Bigram"],
+                "Similarity (%)": [score, jaccard, bigram]
             }).set_index("Method"))
 
             st.subheader("Potential Plagiarism Risk Summary")
@@ -134,9 +138,10 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
 
             st.subheader("Final Analysis Summary")
             st.write(
-                f"TF-IDF similarity is **{score:.2f}%**, Jaccard similarity is "
-                f"**{jaccard:.2f}%**, and **{summary['similar_sentences']}** "
-                f"Document 1 sentences meet the {threshold}% threshold."
+                f"TF-IDF: **{score:.2f}%**, Jaccard: **{jaccard:.2f}%**, "
+                f"Bigram: **{bigram:.2f}%**. "
+                f"**{summary['similar_sentences']}** Document 1 sentences "
+                f"meet the selected {threshold}% threshold."
             )
 
         with tab2:
@@ -144,6 +149,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1, c2 = st.columns(2)
             c1.metric("Document 1 Sentences", len(sentences1))
             c2.metric("Document 2 Sentences", len(sentences2))
+
             with st.expander("View Extracted Sentences"):
                 st.write("Document 1:", sentences1)
                 st.write("Document 2:", sentences2)
@@ -229,6 +235,10 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1.write(", ".join(unique["document1"]) or "None")
             c2.write("**Document 2 Only**")
             c2.write(", ".join(unique["document2"]) or "None")
+
+            st.subheader("Common Bigrams")
+            bigrams = common_bigrams(text1, text2)
+            st.write(", ".join(bigrams) or "No common bigrams found.")
 
             st.subheader("Word Frequency Analysis")
             c1, c2 = st.columns(2)

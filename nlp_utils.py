@@ -41,9 +41,24 @@ def calculate_similarity(text1, text2, remove_stopwords=False, apply_stemming=Fa
 def jaccard_similarity(text1, text2, remove_stopwords=False, apply_stemming=False):
     a = set(preprocess_text(text1, remove_stopwords, apply_stemming).split())
     b = set(preprocess_text(text2, remove_stopwords, apply_stemming).split())
-    if not a or not b:
-        return 0.0
-    return round(len(a & b) / len(a | b) * 100, 2)
+    return round(len(a & b) / len(a | b) * 100, 2) if a and b else 0.0
+
+
+def get_bigrams(text, remove_stopwords=False, apply_stemming=False):
+    words = preprocess_text(text, remove_stopwords, apply_stemming).split()
+    return list(zip(words, words[1:]))
+
+
+def bigram_similarity(text1, text2, remove_stopwords=False, apply_stemming=False):
+    a = set(get_bigrams(text1, remove_stopwords, apply_stemming))
+    b = set(get_bigrams(text2, remove_stopwords, apply_stemming))
+    return round(len(a & b) / len(a | b) * 100, 2) if a and b else 0.0
+
+
+def common_bigrams(text1, text2, top_n=20):
+    a = set(get_bigrams(text1))
+    b = set(get_bigrams(text2))
+    return [" ".join(pair) for pair in sorted(a & b)[:top_n]]
 
 
 def classify_similarity(score):
@@ -55,7 +70,7 @@ def read_txt_file(file):
 
 
 def read_pdf_file(file):
-    return "\n".join(page.extract_text() or "" for page in PdfReader(file).pages)
+    return "\n".join(p.extract_text() or "" for p in PdfReader(file).pages)
 
 
 def split_sentences(text):
@@ -72,10 +87,8 @@ def document_statistics(text):
 
 
 def get_common_keywords(text1, text2):
-    return sorted(
-        set(preprocess_text(text1, True, True).split()) &
-        set(preprocess_text(text2, True, True).split())
-    )
+    return sorted(set(preprocess_text(text1, True, True).split()) &
+                  set(preprocess_text(text2, True, True).split()))
 
 
 def get_unique_keywords(text1, text2):
@@ -129,8 +142,8 @@ def plagiarism_risk_summary(text1, text2, threshold=70):
 
 def similarity_distribution(results):
     counts = Counter({"High": 0, "Moderate": 0, "Low": 0})
-    for result in results:
-        counts[classify_similarity(result["similarity"])] += 1
+    for r in results:
+        counts[classify_similarity(r["similarity"])] += 1
     return dict(counts)
 
 
@@ -140,10 +153,8 @@ def statistics_comparison(text1, text2):
 
 
 def sentence_similarity_matrix(text1, text2):
-    return [
-        [round(calculate_similarity(a, b), 2) for b in split_sentences(text2)]
-        for a in split_sentences(text1)
-    ]
+    return [[round(calculate_similarity(a, b), 2) for b in split_sentences(text2)]
+            for a in split_sentences(text1)]
 
 
 def sentence_results_csv(results):
@@ -156,31 +167,27 @@ def sentence_results_csv(results):
 
 
 def generate_text_report(text1, text2, score, results, threshold=60):
-    stats = statistics_comparison(text1, text2)
-    unique = get_unique_keywords(text1, text2)
-    risk = plagiarism_risk_summary(text1, text2)
     lines = [
         "TEXTGUARD DOCUMENT SIMILARITY REPORT", "=" * 45,
         f"TF-IDF Similarity: {score:.2f}%",
         f"Jaccard Similarity: {jaccard_similarity(text1, text2):.2f}%",
+        f"Bigram Similarity: {bigram_similarity(text1, text2):.2f}%",
         f"Similarity Level: {classify_similarity(score)}",
-        "", "DOCUMENT STATISTICS",
-        str(stats), "", "COMMON KEYWORDS",
-        ", ".join(get_common_keywords(text1, text2)) or "None",
-        "", "UNIQUE KEYWORDS", str(unique),
-        "", "EXACT DUPLICATE SENTENCES"
+        "", "DOCUMENT STATISTICS", str(statistics_comparison(text1, text2)),
+        "", "COMMON KEYWORDS", ", ".join(get_common_keywords(text1, text2)) or "None",
+        "", "UNIQUE KEYWORDS", str(get_unique_keywords(text1, text2)),
+        "", "COMMON BIGRAMS", ", ".join(common_bigrams(text1, text2)) or "None",
+        "", "EXACT DUPLICATES"
     ]
     lines.extend(find_duplicate_sentences(text1, text2) or ["None"])
     lines.extend(["", "SENTENCE RESULTS"])
     for r in results:
-        lines.extend([
-            f"Sentence: {r['sentence']}",
-            f"Closest Match: {r['best_match']}",
-            f"Similarity: {r['similarity']:.2f}%"
-        ])
+        lines.extend([f"Sentence: {r['sentence']}",
+                      f"Closest Match: {r['best_match']}",
+                      f"Similarity: {r['similarity']:.2f}%"])
     lines.extend([
         "", f"Display Threshold: {threshold}%",
-        f"Risk Summary (70% threshold): {risk}",
+        f"Risk Summary (70% threshold): {plagiarism_risk_summary(text1, text2)}",
         "Similarity is not proof of plagiarism."
     ])
     return "\n".join(lines)
@@ -224,6 +231,10 @@ def generate_json_report(text1, text2, score, results, threshold=60,
         "jaccard_similarity": jaccard_similarity(
             text1, text2, remove_stopwords, apply_stemming
         ),
+        "bigram_similarity": bigram_similarity(
+            text1, text2, remove_stopwords, apply_stemming
+        ),
+        "common_bigrams": common_bigrams(text1, text2),
         "similarity_level": classify_similarity(score),
         "settings": {
             "remove_stopwords": remove_stopwords,
@@ -252,15 +263,15 @@ def generate_json_report(text1, text2, score, results, threshold=60,
 def analysis_summary(text1, text2, score, threshold=60):
     results = sentence_similarity_analysis(text1, text2)
     coverage = similarity_coverage(text1, text2, threshold)
-    risk = plagiarism_risk_summary(text1, text2)
     return {
         "overall_similarity": round(score, 2),
         "jaccard_similarity": jaccard_similarity(text1, text2),
+        "bigram_similarity": bigram_similarity(text1, text2),
         "similarity_level": classify_similarity(score),
         "common_keywords": len(get_common_keywords(text1, text2)),
         "exact_duplicates": len(find_duplicate_sentences(text1, text2)),
         "similar_sentences": sum(r["similarity"] >= threshold for r in results),
         "document1_coverage": coverage["document1"],
         "document2_coverage": coverage["document2"],
-        "risk": risk["risk"]
+        "risk": plagiarism_risk_summary(text1, text2)["risk"]
     }
