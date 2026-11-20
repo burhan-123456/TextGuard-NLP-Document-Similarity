@@ -69,14 +69,34 @@ def get_unique_keywords(text1, text2):
 
 
 def find_duplicate_sentences(text1, text2):
-    sentences1 = split_sentences(text1)
-    sentences2 = split_sentences(text2)
-    normalized2 = {preprocess_text(s) for s in sentences2}
+    normalized2 = {preprocess_text(s) for s in split_sentences(text2)}
     duplicates = []
-
-    for sentence in sentences1:
+    for sentence in split_sentences(text1):
         cleaned = preprocess_text(sentence)
         if cleaned and cleaned in normalized2 and sentence not in duplicates:
             duplicates.append(sentence)
-
     return duplicates
+
+
+def sentence_similarity_analysis(text1, text2):
+    sentences1 = split_sentences(text1)
+    sentences2 = split_sentences(text2)
+    results = []
+
+    for sentence1 in sentences1:
+        best_score = 0.0
+        best_match = ""
+
+        for sentence2 in sentences2:
+            score = calculate_similarity(sentence1, sentence2)
+            if score > best_score:
+                best_score = score
+                best_match = sentence2
+
+        results.append({
+            "sentence": sentence1,
+            "best_match": best_match,
+            "similarity": round(best_score, 2)
+        })
+
+    return results

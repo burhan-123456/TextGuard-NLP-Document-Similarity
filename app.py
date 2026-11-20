@@ -3,8 +3,8 @@ import streamlit as st
 from nlp_utils import (
     preprocess_text, calculate_similarity, classify_similarity,
     read_txt_file, read_pdf_file, document_statistics,
-    get_common_keywords, get_unique_keywords,
-    split_sentences, find_duplicate_sentences
+    get_common_keywords, get_unique_keywords, split_sentences,
+    find_duplicate_sentences, sentence_similarity_analysis
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -84,11 +84,17 @@ if st.button("Compare Documents", type="primary"):
         st.subheader("Exact Duplicate Sentences")
         duplicates = find_duplicate_sentences(text1, text2)
         if duplicates:
-            st.warning(f"{len(duplicates)} duplicate sentence(s) found.")
             for sentence in duplicates:
-                st.write(f"🔴 {sentence}")
+                st.warning(sentence)
         else:
             st.success("No exact duplicate sentences found.")
+
+        st.subheader("Sentence-Level Similarity")
+        results = sentence_similarity_analysis(text1, text2)
+        if results:
+            st.dataframe(results, use_container_width=True)
+        else:
+            st.info("No sentences available.")
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))
