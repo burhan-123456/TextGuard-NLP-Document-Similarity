@@ -42,3 +42,13 @@ def classify_similarity(score):
         return "Moderate"
     else:
         return "Low"
+
+
+def read_txt_file(uploaded_file):
+    try:
+        return uploaded_file.getvalue().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return uploaded_file.getvalue().decode(
+            "utf-8",
+            errors="replace"
+        )

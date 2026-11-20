@@ -2,7 +2,8 @@ import streamlit as st
 from nlp_utils import (
     calculate_similarity,
     preprocess_text,
-    classify_similarity
+    classify_similarity,
+    read_txt_file
 )
 
 st.set_page_config(
@@ -14,15 +15,56 @@ st.set_page_config(
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity Detector")
 
-st.write("Compare documents and identify their similarity level.")
+st.write("Compare text directly or upload TXT documents.")
 
-col1, col2 = st.columns(2)
+input_method = st.radio(
+    "Choose Input Method",
+    ["Enter Text", "Upload TXT Files"],
+    horizontal=True
+)
 
-with col1:
-    text1 = st.text_area("Document 1", height=250)
+text1 = ""
+text2 = ""
 
-with col2:
-    text2 = st.text_area("Document 2", height=250)
+if input_method == "Enter Text":
+    col1, col2 = st.columns(2)
+
+    with col1:
+        text1 = st.text_area("Document 1", height=250)
+
+    with col2:
+        text2 = st.text_area("Document 2", height=250)
+
+else:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        file1 = st.file_uploader(
+            "Upload Document 1",
+            type=["txt"],
+            key="file1"
+        )
+
+    with col2:
+        file2 = st.file_uploader(
+            "Upload Document 2",
+            type=["txt"],
+            key="file2"
+        )
+
+    if file1 is not None:
+        text1 = read_txt_file(file1)
+
+    if file2 is not None:
+        text2 = read_txt_file(file2)
+
+    if text1:
+        with st.expander("Preview Document 1"):
+            st.text(text1[:3000])
+
+    if text2:
+        with st.expander("Preview Document 2"):
+            st.text(text2[:3000])
 
 if st.button("Compare Documents", type="primary"):
     if text1.strip() and text2.strip():
@@ -56,4 +98,4 @@ if st.button("Compare Documents", type="primary"):
             st.write("Document 2:")
             st.write(preprocess_text(text2))
     else:
-        st.warning("Please enter both documents.")
+        st.warning("Please provide both documents.")
