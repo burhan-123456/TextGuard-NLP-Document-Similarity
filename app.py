@@ -14,7 +14,7 @@ from nlp_utils import (
     statistics_comparison, sentence_similarity_matrix, sentence_results_csv,
     generate_text_report, word_frequency, top_keyword_frequencies,
     similarity_coverage, generate_json_report, analysis_summary,
-    highlight_sentence
+    highlight_sentence, sort_sentence_results
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -169,18 +169,23 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 st.success("No exact duplicate sentences found.")
 
             st.subheader("Sentence-Level Similarity")
+            sort_order = st.selectbox(
+                "Sort Sentence Matches",
+                ["Highest First", "Lowest First"]
+            )
+            sorted_results = sort_sentence_results(results, sort_order)
             st.dataframe(
-                pd.DataFrame(results, columns=["sentence", "best_match", "similarity"]),
+                pd.DataFrame(sorted_results, columns=["sentence", "best_match", "similarity"]),
                 use_container_width=True
             )
             st.download_button(
                 "Download Sentence Similarity CSV",
-                data=sentence_results_csv(results),
+                data=sentence_results_csv(sorted_results),
                 file_name="sentence_similarity.csv", mime="text/csv"
             )
 
             st.subheader("Potentially Similar Passages")
-            similar = [r for r in results if r["similarity"] >= threshold]
+            similar = [r for r in sorted_results if r["similarity"] >= threshold]
             if similar:
                 for r in similar:
                     st.write("**Document 1:**", r["sentence"])
@@ -194,9 +199,8 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 "Red = high similarity, yellow = moderate, green = low. "
                 "Gray = below your selected threshold."
             )
-
-            if results:
-                for r in results:
+            if sorted_results:
+                for r in sorted_results:
                     st.markdown(
                         highlight_sentence(r["sentence"], r["similarity"], threshold),
                         unsafe_allow_html=True

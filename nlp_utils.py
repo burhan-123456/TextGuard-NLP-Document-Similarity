@@ -159,6 +159,14 @@ def sentence_similarity_analysis(text1, text2, min_words=1):
     return results
 
 
+def sort_sentence_results(results, order="Highest First"):
+    return sorted(
+        results,
+        key=lambda result: result["similarity"],
+        reverse=(order == "Highest First")
+    )
+
+
 def get_similar_sentences(text1, text2, threshold=60, min_words=1):
     return [
         r for r in sentence_similarity_analysis(text1, text2, min_words)
@@ -287,18 +295,14 @@ def highlight_sentence(sentence, score, threshold=60):
     safe_sentence = html.escape(sentence)
 
     if score >= 70:
-        background = "#ffd6d6"
-        border = "#dc2626"
+        background, border = "#ffd6d6", "#dc2626"
     elif score >= 40:
-        background = "#fff0c2"
-        border = "#d97706"
+        background, border = "#fff0c2", "#d97706"
     else:
-        background = "#dcfce7"
-        border = "#16a34a"
+        background, border = "#dcfce7", "#16a34a"
 
     if score < threshold:
-        background = "#f1f5f9"
-        border = "#94a3b8"
+        background, border = "#f1f5f9", "#94a3b8"
 
     return (
         f'<div style="background:{background};border-left:5px solid {border};'
