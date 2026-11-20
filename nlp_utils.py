@@ -33,3 +33,12 @@ def calculate_similarity(text1, text2):
     )[0][0]
 
     return float(score * 100)
+
+
+def classify_similarity(score):
+    if score >= 70:
+        return "High"
+    elif score >= 40:
+        return "Moderate"
+    else:
+        return "Low"
