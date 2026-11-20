@@ -4,7 +4,8 @@ from nlp_utils import (
     preprocess_text, calculate_similarity, classify_similarity,
     read_txt_file, read_pdf_file, document_statistics,
     get_common_keywords, get_unique_keywords, split_sentences,
-    find_duplicate_sentences, sentence_similarity_analysis
+    find_duplicate_sentences, sentence_similarity_analysis,
+    get_similar_sentences
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -42,6 +43,7 @@ else:
 st.subheader("NLP Settings")
 remove_stopwords = st.checkbox("Remove Stopwords")
 apply_stemming = st.checkbox("Apply Stemming")
+threshold = st.slider("Sentence Similarity Threshold (%)", 0, 100, 60)
 
 if st.button("Compare Documents", type="primary"):
     if text1.strip() and text2.strip():
@@ -72,14 +74,13 @@ if st.button("Compare Documents", type="primary"):
         c2.write(", ".join(unique["document2"]) or "None")
 
         st.subheader("Sentence Analysis")
-        s1, s2 = split_sentences(text1), split_sentences(text2)
         c1, c2 = st.columns(2)
-        c1.metric("Document 1 Sentences", len(s1))
-        c2.metric("Document 2 Sentences", len(s2))
+        c1.metric("Document 1 Sentences", len(split_sentences(text1)))
+        c2.metric("Document 2 Sentences", len(split_sentences(text2)))
 
         with st.expander("View Extracted Sentences"):
-            st.write("Document 1:", s1)
-            st.write("Document 2:", s2)
+            st.write("Document 1:", split_sentences(text1))
+            st.write("Document 2:", split_sentences(text2))
 
         st.subheader("Exact Duplicate Sentences")
         duplicates = find_duplicate_sentences(text1, text2)
@@ -93,8 +94,16 @@ if st.button("Compare Documents", type="primary"):
         results = sentence_similarity_analysis(text1, text2)
         if results:
             st.dataframe(results, use_container_width=True)
+
+        st.subheader("Potentially Similar Passages")
+        similar = get_similar_sentences(text1, text2, threshold)
+        if similar:
+            for result in similar:
+                st.write("**Document 1:**", result["sentence"])
+                st.write("**Closest Match:**", result["best_match"])
+                st.warning(f"Similarity: {result['similarity']:.2f}%")
         else:
-            st.info("No sentences available.")
+            st.success("No sentences exceeded the selected threshold.")
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))

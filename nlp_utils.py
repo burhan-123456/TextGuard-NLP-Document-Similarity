@@ -79,15 +79,12 @@ def find_duplicate_sentences(text1, text2):
 
 
 def sentence_similarity_analysis(text1, text2):
-    sentences1 = split_sentences(text1)
-    sentences2 = split_sentences(text2)
     results = []
-
-    for sentence1 in sentences1:
+    for sentence1 in split_sentences(text1):
         best_score = 0.0
         best_match = ""
 
-        for sentence2 in sentences2:
+        for sentence2 in split_sentences(text2):
             score = calculate_similarity(sentence1, sentence2)
             if score > best_score:
                 best_score = score
@@ -98,5 +95,11 @@ def sentence_similarity_analysis(text1, text2):
             "best_match": best_match,
             "similarity": round(best_score, 2)
         })
-
     return results
+
+
+def get_similar_sentences(text1, text2, threshold=60):
+    return [
+        result for result in sentence_similarity_analysis(text1, text2)
+        if result["similarity"] >= threshold
+    ]
