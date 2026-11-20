@@ -1,4 +1,5 @@
 import streamlit as st
+from nlp_utils import calculate_similarity
 
 st.set_page_config(
     page_title="TextGuard",
@@ -9,9 +10,7 @@ st.set_page_config(
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity Detector")
 
-st.write(
-    "Compare two text documents using Natural Language Processing."
-)
+st.write("Compare two documents and calculate basic word similarity.")
 
 col1, col2 = st.columns(2)
 
@@ -31,6 +30,7 @@ with col2:
 
 if st.button("Compare Documents"):
     if text1.strip() and text2.strip():
-        st.success("Both documents are ready for comparison.")
+        score = calculate_similarity(text1, text2)
+        st.success(f"Word Similarity: {score:.2f}%")
     else:
-        st.warning("Please enter text in both documents.")
+        st.warning("Please enter both documents.")
