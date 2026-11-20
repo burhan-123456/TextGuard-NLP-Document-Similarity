@@ -23,10 +23,7 @@ st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity & Plagiarism Screening")
 
-method = st.radio(
-    "Choose Input Method", ["Enter Text", "Upload Documents"],
-    horizontal=True
-)
+method = st.radio("Input Method", ["Enter Text", "Upload Documents"], horizontal=True)
 text1, text2 = "", ""
 
 if method == "Enter Text":
@@ -38,9 +35,9 @@ if method == "Enter Text":
 else:
     c1, c2 = st.columns(2)
     with c1:
-        file1 = st.file_uploader("Upload Document 1", type=["txt", "pdf"], key="f1")
+        file1 = st.file_uploader("Document 1", type=["txt", "pdf"], key="f1")
     with c2:
-        file2 = st.file_uploader("Upload Document 2", type=["txt", "pdf"], key="f2")
+        file2 = st.file_uploader("Document 2", type=["txt", "pdf"], key="f2")
 
     def extract_file(file):
         if file is None:
@@ -48,7 +45,7 @@ else:
         try:
             return read_pdf_file(file) if file.name.lower().endswith(".pdf") else read_txt_file(file)
         except Exception as error:
-            st.error(f"Unable to read {file.name}: {error}")
+            st.error(f"File error: {error}")
             return ""
 
     text1, text2 = extract_file(file1), extract_file(file2)
@@ -59,15 +56,18 @@ else:
         with st.expander("Preview Document 2"):
             st.text(text2[:3000])
 
-st.divider()
 st.subheader("NLP Settings")
 c1, c2 = st.columns(2)
 with c1:
     remove_stopwords = st.checkbox("Remove Stopwords")
 with c2:
     apply_stemming = st.checkbox("Apply Stemming")
+
 threshold = st.slider("Sentence Similarity Threshold (%)", 0, 100, 60)
 min_words = st.slider("Minimum Words Per Sentence", 1, 20, 1)
+
+# Commit 40: adjustable keyword count
+keyword_limit = st.slider("Number of Top Keywords", 5, 30, 10)
 
 if st.button("🔍 Compare Documents", type="primary", use_container_width=True):
     if not text1.strip() or not text2.strip():
@@ -111,45 +111,43 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1.write("**Document 1**", stats["Document 1"])
             c2.write("**Document 2**", stats["Document 2"])
 
-            st.subheader("Statistics Comparison Chart")
+            st.subheader("Statistics Comparison")
             st.bar_chart(pd.DataFrame(stats))
 
-            st.subheader("Similarity Method Comparison")
+            st.subheader("Similarity Methods")
             st.bar_chart(pd.DataFrame({
-                "Method": ["TF-IDF Cosine", "Jaccard", "Bigram"],
-                "Similarity (%)": [score, jaccard, bigram]
+                "Method": ["TF-IDF", "Jaccard", "Bigram"],
+                "Score": [score, jaccard, bigram]
             }).set_index("Method"))
 
             st.subheader("Longest Common Word Sequence")
-            st.metric("Consecutive Matching Words", longest["length"])
-            st.info(longest["sequence"] or "No consecutive matching words found.")
+            st.metric("Matching Words", longest["length"])
+            st.info(longest["sequence"] or "None")
 
-            st.subheader("Potential Plagiarism Risk Summary")
             risk = plagiarism_risk_summary(text1, text2, 70, min_words)
+            st.subheader("Potential Plagiarism Risk Summary")
             c1, c2, c3 = st.columns(3)
             c1.metric("Sentences Analyzed", risk["total_sentences"])
             c2.metric("Flagged Sentences", risk["flagged_sentences"])
             c3.metric("Flagged Percentage", f"{risk['flagged_percentage']:.2f}%")
             st.write("**Risk Level:**", risk["risk"])
 
-            st.subheader("Bidirectional Similarity Coverage")
+            st.subheader("Bidirectional Coverage")
             c1, c2 = st.columns(2)
-            c1.metric("Document 1 Coverage", f"{coverage['document1']:.2f}%")
-            c2.metric("Document 2 Coverage", f"{coverage['document2']:.2f}%")
+            c1.metric("Document 1", f"{coverage['document1']:.2f}%")
+            c2.metric("Document 2", f"{coverage['document2']:.2f}%")
             st.bar_chart(pd.DataFrame({
                 "Document": ["Document 1", "Document 2"],
-                "Coverage (%)": [coverage["document1"], coverage["document2"]]
+                "Coverage": [coverage["document1"], coverage["document2"]]
             }).set_index("Document"))
             st.caption(
-                f"Document 1: {coverage['matched1']}/{coverage['total1']} matched. "
-                f"Document 2: {coverage['matched2']}/{coverage['total2']} matched."
+                f"Matched sentences: {coverage['matched1']}/{coverage['total1']} "
+                f"and {coverage['matched2']}/{coverage['total2']}."
             )
 
             st.subheader("Final Analysis Summary")
             st.write(
-                f"TF-IDF: **{score:.2f}%**, Jaccard: **{jaccard:.2f}%**, "
-                f"Bigram: **{bigram:.2f}%**. "
-                f"Longest common sequence: **{longest['length']} words**. "
+                f"Overall similarity is **{score:.2f}%**. "
                 f"**{summary['similar_sentences']}** sentences meet the threshold."
             )
 
@@ -169,54 +167,45 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 for sentence in duplicates:
                     st.warning(sentence)
             else:
-                st.success("No exact duplicate sentences found.")
+                st.success("No exact duplicates found.")
 
             st.subheader("Sentence-Level Similarity")
             sort_order = st.selectbox(
-                "Sort Sentence Matches", ["Highest First", "Lowest First"]
+                "Sort Matches", ["Highest First", "Lowest First"]
             )
-            search_query = st.text_input(
-                "Search Sentence Matches", placeholder="Enter a word or phrase..."
+            search_query = st.text_input("Search Sentence Matches")
+            filtered = search_sentence_results(
+                sort_sentence_results(results, sort_order), search_query
             )
-            sorted_results = sort_sentence_results(results, sort_order)
-            filtered_results = search_sentence_results(sorted_results, search_query)
 
-            st.caption(f"Showing {len(filtered_results)} of {len(results)} matches.")
-            st.dataframe(
-                pd.DataFrame(
-                    filtered_results,
-                    columns=["sentence", "best_match", "similarity"]
-                ),
-                use_container_width=True
-            )
+            st.caption(f"Showing {len(filtered)} of {len(results)} matches.")
+            st.dataframe(pd.DataFrame(
+                filtered, columns=["sentence", "best_match", "similarity"]
+            ), use_container_width=True)
             st.download_button(
-                "Download Sentence Similarity CSV",
-                sentence_results_csv(filtered_results),
+                "Download Sentence CSV", sentence_results_csv(filtered),
                 "sentence_similarity.csv", "text/csv"
             )
 
             st.subheader("Potentially Similar Passages")
-            similar = [r for r in filtered_results if r["similarity"] >= threshold]
+            similar = [r for r in filtered if r["similarity"] >= threshold]
             if similar:
                 for r in similar:
                     st.write("**Document 1:**", r["sentence"])
                     st.write("**Closest Match:**", r["best_match"])
                     st.warning(f"Similarity: {r['similarity']:.2f}%")
             else:
-                st.info("No matching passages meet the selected threshold.")
+                st.info("No matching passages meet the threshold.")
 
-            st.subheader("Color-Coded Sentence Comparison")
+            st.subheader("Color-Coded Comparison")
             st.caption("Red = high, yellow = moderate, green = low, gray = below threshold.")
-            if filtered_results:
-                for r in filtered_results:
-                    st.markdown(
-                        highlight_sentence(r["sentence"], r["similarity"], threshold),
-                        unsafe_allow_html=True
-                    )
-                    if r["best_match"]:
-                        st.write("**Closest Document 2 Match:**", r["best_match"])
-            else:
-                st.info("No sentences match your search.")
+            for r in filtered:
+                st.markdown(
+                    highlight_sentence(r["sentence"], r["similarity"], threshold),
+                    unsafe_allow_html=True
+                )
+                if r["best_match"]:
+                    st.write("**Closest Document 2 Match:**", r["best_match"])
 
         with tab3:
             st.subheader("Similarity Distribution")
@@ -243,28 +232,25 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 fig.tight_layout()
                 st.pyplot(fig)
 
-                # Commit 39: export heatmap image
-                image_buffer = io.BytesIO()
-                fig.savefig(image_buffer, format="png", dpi=160, bbox_inches="tight")
-                image_buffer.seek(0)
+                buffer = io.BytesIO()
+                fig.savefig(buffer, format="png", dpi=160, bbox_inches="tight")
                 st.download_button(
-                    "Download Heatmap PNG",
-                    data=image_buffer.getvalue(),
-                    file_name="textguard_heatmap.png",
-                    mime="image/png"
+                    "Download Heatmap PNG", buffer.getvalue(),
+                    "textguard_heatmap.png", "image/png"
                 )
                 plt.close(fig)
             else:
-                st.info("No heatmap data available after sentence filtering.")
+                st.info("No heatmap data available.")
 
-            st.subheader("Top Keyword Frequency Charts")
+            st.subheader(f"Top {keyword_limit} Keyword Frequency Charts")
             c1, c2 = st.columns(2)
             for column, text, label in [
-                (c1, text1, "Document 1"), (c2, text2, "Document 2")
+                (c1, text1, "Document 1"),
+                (c2, text2, "Document 2")
             ]:
                 with column:
                     st.write(f"**{label}**")
-                    keywords = top_keyword_frequencies(text)
+                    keywords = top_keyword_frequencies(text, keyword_limit)
                     if keywords:
                         st.bar_chart(pd.DataFrame({
                             "Keyword": list(keywords),
@@ -288,17 +274,19 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c2.write(", ".join(unique["document2"]) or "None")
 
             st.subheader("Common Bigrams")
-            st.write(", ".join(common_bigrams(text1, text2)) or "No common bigrams.")
+            st.write(", ".join(common_bigrams(text1, text2)) or "None")
 
-            st.subheader("Word Frequency Analysis")
+            st.subheader(f"Top {keyword_limit} Word Frequencies")
             c1, c2 = st.columns(2)
             c1.write("**Document 1**")
             c1.dataframe(pd.DataFrame(
-                list(word_frequency(text1).items()), columns=["Word", "Frequency"]
+                list(word_frequency(text1, keyword_limit).items()),
+                columns=["Word", "Frequency"]
             ))
             c2.write("**Document 2**")
             c2.dataframe(pd.DataFrame(
-                list(word_frequency(text2).items()), columns=["Word", "Frequency"]
+                list(word_frequency(text2, keyword_limit).items()),
+                columns=["Word", "Frequency"]
             ))
 
         with tab5:
@@ -314,18 +302,17 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 text1, text2, score, results, threshold,
                 min_words, remove_stopwords, apply_stemming
             )
-
             c1, c2, c3 = st.columns(3)
             c1.download_button(
-                "Download TXT Report", txt_report.encode("utf-8"),
+                "Download TXT", txt_report.encode("utf-8"),
                 "textguard_report.txt", "text/plain"
             )
             c2.download_button(
-                "Download JSON Report", json_report.encode("utf-8"),
+                "Download JSON", json_report.encode("utf-8"),
                 "textguard_report.json", "application/json"
             )
             c3.download_button(
-                "Download HTML Report", html_report.encode("utf-8"),
+                "Download HTML", html_report.encode("utf-8"),
                 "textguard_report.html", "text/html"
             )
 
