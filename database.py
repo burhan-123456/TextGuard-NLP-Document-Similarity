@@ -36,44 +36,41 @@ def save_comparison(entry):
                 created_at, document1_words, document2_words,
                 tfidf, jaccard, bigram, similarity_level,
                 similar_sentences, risk_level, threshold, min_words
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             datetime.now(timezone.utc).isoformat(),
-            entry["Document 1 Words"],
-            entry["Document 2 Words"],
-            entry["TF-IDF (%)"],
-            entry["Jaccard (%)"],
-            entry["Bigram (%)"],
-            entry["Level"],
-            entry["Similar Sentences"],
-            entry["Risk"],
-            entry["Threshold (%)"],
-            entry["Minimum Words"]
+            entry["Document 1 Words"], entry["Document 2 Words"],
+            entry["TF-IDF (%)"], entry["Jaccard (%)"], entry["Bigram (%)"],
+            entry["Level"], entry["Similar Sentences"], entry["Risk"],
+            entry["Threshold (%)"], entry["Minimum Words"]
         ))
 
 
 def get_history(search="", level="All", risk="All"):
     query = "SELECT * FROM comparisons WHERE 1=1"
     params = []
-
     if search.strip():
         query += " AND CAST(id AS TEXT) LIKE ?"
         params.append(f"%{search.strip()}%")
-
     if level != "All":
         query += " AND similarity_level = ?"
         params.append(level)
-
     if risk != "All":
         query += " AND risk_level = ?"
         params.append(risk)
-
     query += " ORDER BY id DESC"
 
     with get_connection() as conn:
         conn.row_factory = sqlite3.Row
-        return [dict(row) for row in conn.execute(query, params).fetchall()]
+        return [dict(row) for row in conn.execute(query, params)]
+
+
+def delete_comparison(comparison_id):
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM comparisons WHERE id = ?", (comparison_id,)
+        )
+        return cursor.rowcount > 0
 
 
 def clear_history():
