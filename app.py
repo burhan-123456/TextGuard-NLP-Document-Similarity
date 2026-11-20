@@ -6,7 +6,8 @@ from nlp_utils import (
     read_txt_file, read_pdf_file, document_statistics,
     get_common_keywords, get_unique_keywords, split_sentences,
     find_duplicate_sentences, sentence_similarity_analysis,
-    get_similar_sentences, plagiarism_risk_summary, similarity_distribution
+    get_similar_sentences, plagiarism_risk_summary,
+    similarity_distribution, statistics_comparison
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -34,8 +35,8 @@ else:
             return ""
         try:
             return read_pdf_file(file) if file.name.lower().endswith(".pdf") else read_txt_file(file)
-        except Exception as e:
-            st.error(f"File error: {e}")
+        except Exception as error:
+            st.error(f"File error: {error}")
             return ""
 
     text1, text2 = extract_file(file1), extract_file(file2)
@@ -50,30 +51,23 @@ if st.button("Compare Documents", type="primary"):
         st.warning("Please provide both documents.")
     else:
         score = calculate_similarity(text1, text2, remove_stopwords, apply_stemming)
-        level = classify_similarity(score)
         results = sentence_similarity_analysis(text1, text2)
 
         st.subheader("Similarity Results")
         c1, c2 = st.columns(2)
         c1.metric("Similarity Score", f"{score:.2f}%")
-        c2.metric("Similarity Level", level)
+        c2.metric("Similarity Level", classify_similarity(score))
         st.progress(min(max(score / 100, 0.0), 1.0))
 
-        if level == "High":
-            st.error("High textual similarity detected.")
-        elif level == "Moderate":
-            st.warning("Moderate textual similarity detected.")
-        else:
-            st.success("Low textual similarity detected.")
-
         st.subheader("Document Statistics")
+        comparison = statistics_comparison(text1, text2)
         c1, c2 = st.columns(2)
-        with c1:
-            st.write("**Document 1**")
-            st.write(document_statistics(text1))
-        with c2:
-            st.write("**Document 2**")
-            st.write(document_statistics(text2))
+        c1.write("**Document 1**", comparison["Document 1"])
+        c2.write("**Document 2**", comparison["Document 2"])
+
+        st.subheader("Document Statistics Comparison Chart")
+        chart_data = pd.DataFrame(comparison)
+        st.bar_chart(chart_data)
 
         st.subheader("Common Keywords")
         common = get_common_keywords(text1, text2)
@@ -92,7 +86,6 @@ if st.button("Compare Documents", type="primary"):
         c1, c2 = st.columns(2)
         c1.metric("Document 1 Sentences", len(split_sentences(text1)))
         c2.metric("Document 2 Sentences", len(split_sentences(text2)))
-
         with st.expander("View Extracted Sentences"):
             st.write("Document 1:", split_sentences(text1))
             st.write("Document 2:", split_sentences(text2))
@@ -137,4 +130,4 @@ if st.button("Compare Documents", type="primary"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))
             st.write("Document 2:", preprocess_text(text2, remove_stopwords, apply_stemming))
 
-        st.caption("Similarity scores are screening indicators, not proof of plagiarism.")
+        st.caption("Similarity does not establish plagiarism.")

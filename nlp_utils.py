@@ -42,7 +42,7 @@ def read_txt_file(file):
 
 
 def read_pdf_file(file):
-    return "\n".join(page.extract_text() or "" for page in PdfReader(file).pages)
+    return "\n".join(p.extract_text() or "" for p in PdfReader(file).pages)
 
 
 def split_sentences(text):
@@ -72,11 +72,9 @@ def get_unique_keywords(text1, text2):
 
 def find_duplicate_sentences(text1, text2):
     normalized = {preprocess_text(s) for s in split_sentences(text2)}
-    duplicates = []
-    for sentence in split_sentences(text1):
-        if preprocess_text(sentence) in normalized and sentence not in duplicates:
-            duplicates.append(sentence)
-    return duplicates
+    return list(dict.fromkeys(
+        s for s in split_sentences(text1) if preprocess_text(s) in normalized
+    ))
 
 
 def sentence_similarity_analysis(text1, text2):
@@ -88,8 +86,7 @@ def sentence_similarity_analysis(text1, text2):
             if score > best_score:
                 best_score, best_match = score, candidate
         results.append({
-            "sentence": sentence,
-            "best_match": best_match,
+            "sentence": sentence, "best_match": best_match,
             "similarity": round(best_score, 2)
         })
     return results
@@ -117,3 +114,10 @@ def similarity_distribution(results):
     for result in results:
         counts[classify_similarity(result["similarity"])] += 1
     return dict(counts)
+
+
+def statistics_comparison(text1, text2):
+    return {
+        "Document 1": document_statistics(text1),
+        "Document 2": document_statistics(text2)
+    }
