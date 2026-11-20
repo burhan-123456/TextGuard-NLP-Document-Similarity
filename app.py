@@ -1,8 +1,5 @@
 import streamlit as st
-from nlp_utils import (
-    calculate_similarity,
-    preprocess_text
-)
+from nlp_utils import calculate_similarity, preprocess_text
 
 st.set_page_config(
     page_title="TextGuard",
@@ -13,10 +10,7 @@ st.set_page_config(
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity Detector")
 
-st.write(
-    "Compare documents using TF-IDF vectorization "
-    "and cosine similarity."
-)
+st.write("Analyze document similarity using TF-IDF and cosine similarity.")
 
 col1, col2 = st.columns(2)
 
@@ -26,11 +20,19 @@ with col1:
 with col2:
     text2 = st.text_area("Document 2", height=250)
 
-if st.button("Compare Documents"):
+if st.button("Compare Documents", type="primary"):
     if text1.strip() and text2.strip():
         score = calculate_similarity(text1, text2)
 
-        st.success(f"TF-IDF Similarity: {score:.2f}%")
+        st.divider()
+        st.subheader("Similarity Analysis")
+
+        st.metric(
+            label="Document Similarity",
+            value=f"{score:.2f}%"
+        )
+
+        st.progress(min(max(score / 100, 0.0), 1.0))
 
         with st.expander("View Preprocessed Text"):
             st.write("Document 1:")

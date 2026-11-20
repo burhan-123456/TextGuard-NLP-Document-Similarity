@@ -27,9 +27,9 @@ def calculate_similarity(text1, text2):
     except ValueError:
         return 0.0
 
-    similarity = cosine_similarity(
+    score = cosine_similarity(
         vectors[0:1],
         vectors[1:2]
     )[0][0]
 
-    return float(similarity * 100)
+    return float(score * 100)
