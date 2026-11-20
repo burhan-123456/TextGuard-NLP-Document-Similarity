@@ -13,7 +13,7 @@ from nlp_utils import (
     similarity_distribution, statistics_comparison,
     sentence_similarity_matrix, sentence_results_csv,
     generate_text_report, word_frequency, top_keyword_frequencies,
-    similarity_coverage
+    similarity_coverage, generate_json_report
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -165,12 +165,13 @@ if st.button("Compare Documents", type="primary"):
             plt.close(fig)
 
         st.subheader("Word Frequency Analysis")
-        freq1, freq2 = word_frequency(text1), word_frequency(text2)
         c1, c2 = st.columns(2)
         c1.write("**Document 1 - Top Words**")
-        c1.dataframe(pd.DataFrame(list(freq1.items()), columns=["Word", "Frequency"]))
+        c1.dataframe(pd.DataFrame(list(word_frequency(text1).items()),
+                                  columns=["Word", "Frequency"]))
         c2.write("**Document 2 - Top Words**")
-        c2.dataframe(pd.DataFrame(list(freq2.items()), columns=["Word", "Frequency"]))
+        c2.dataframe(pd.DataFrame(list(word_frequency(text2).items()),
+                                  columns=["Word", "Frequency"]))
 
         st.subheader("Top Keyword Frequency Charts")
         c1, c2 = st.columns(2)
@@ -199,18 +200,32 @@ if st.button("Compare Documents", type="primary"):
             "Coverage (%)": [coverage["document1"], coverage["document2"]]
         }).set_index("Document"))
         st.caption(
-            f"Document 1: {coverage['matched1']}/{coverage['total1']} sentences matched. "
-            f"Document 2: {coverage['matched2']}/{coverage['total2']} sentences matched."
+            f"Document 1: {coverage['matched1']}/{coverage['total1']} matched. "
+            f"Document 2: {coverage['matched2']}/{coverage['total2']} matched."
         )
 
-        st.subheader("Download Comparison Report")
+        st.subheader("Download Comparison Reports")
         report = generate_text_report(text1, text2, score, results, threshold)
-        st.download_button(
-            "Download TXT Report",
-            data=report.encode("utf-8"),
-            file_name="textguard_report.txt",
-            mime="text/plain"
+        json_report = generate_json_report(
+            text1, text2, score, results, threshold,
+            remove_stopwords, apply_stemming
         )
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.download_button(
+                "Download TXT Report",
+                data=report.encode("utf-8"),
+                file_name="textguard_report.txt",
+                mime="text/plain"
+            )
+        with c2:
+            st.download_button(
+                "Download JSON Report",
+                data=json_report.encode("utf-8"),
+                file_name="textguard_report.json",
+                mime="application/json"
+            )
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))
