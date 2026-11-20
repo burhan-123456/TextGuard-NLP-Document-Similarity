@@ -6,13 +6,12 @@ import matplotlib.pyplot as plt
 
 from nlp_utils import (
     preprocess_text, calculate_similarity, jaccard_similarity,
-    bigram_similarity, common_bigrams, classify_similarity,
-    read_txt_file, read_pdf_file, document_statistics,
-    get_common_keywords, get_unique_keywords, split_sentences,
-    find_duplicate_sentences, sentence_similarity_analysis,
-    get_similar_sentences, plagiarism_risk_summary,
-    similarity_distribution, statistics_comparison,
-    sentence_similarity_matrix, sentence_results_csv,
+    bigram_similarity, common_bigrams, longest_common_word_sequence,
+    classify_similarity, read_txt_file, read_pdf_file,
+    document_statistics, get_common_keywords, get_unique_keywords,
+    split_sentences, find_duplicate_sentences, sentence_similarity_analysis,
+    get_similar_sentences, plagiarism_risk_summary, similarity_distribution,
+    statistics_comparison, sentence_similarity_matrix, sentence_results_csv,
     generate_text_report, word_frequency, top_keyword_frequencies,
     similarity_coverage, generate_json_report, analysis_summary
 )
@@ -47,7 +46,6 @@ else:
             return ""
 
     text1, text2 = extract_file(file1), extract_file(file2)
-
     if text1:
         with st.expander("Preview Document 1"):
             st.text(text1[:3000])
@@ -71,6 +69,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
         score = calculate_similarity(text1, text2, remove_stopwords, apply_stemming)
         jaccard = jaccard_similarity(text1, text2, remove_stopwords, apply_stemming)
         bigram = bigram_similarity(text1, text2, remove_stopwords, apply_stemming)
+        longest = longest_common_word_sequence(text1, text2)
         results = sentence_similarity_analysis(text1, text2)
         summary = analysis_summary(text1, text2, score, threshold)
         stats = statistics_comparison(text1, text2)
@@ -115,6 +114,10 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 "Similarity (%)": [score, jaccard, bigram]
             }).set_index("Method"))
 
+            st.subheader("Longest Common Word Sequence")
+            st.metric("Consecutive Matching Words", longest["length"])
+            st.info(longest["sequence"] or "No consecutive matching words found.")
+
             st.subheader("Potential Plagiarism Risk Summary")
             risk = plagiarism_risk_summary(text1, text2)
             c1, c2, c3 = st.columns(3)
@@ -140,8 +143,8 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.write(
                 f"TF-IDF: **{score:.2f}%**, Jaccard: **{jaccard:.2f}%**, "
                 f"Bigram: **{bigram:.2f}%**. "
-                f"**{summary['similar_sentences']}** Document 1 sentences "
-                f"meet the selected {threshold}% threshold."
+                f"The longest common sequence contains **{longest['length']} words**. "
+                f"**{summary['similar_sentences']}** sentences meet the {threshold}% threshold."
             )
 
         with tab2:

@@ -56,9 +56,37 @@ def bigram_similarity(text1, text2, remove_stopwords=False, apply_stemming=False
 
 
 def common_bigrams(text1, text2, top_n=20):
-    a = set(get_bigrams(text1))
-    b = set(get_bigrams(text2))
-    return [" ".join(pair) for pair in sorted(a & b)[:top_n]]
+    return [
+        " ".join(pair)
+        for pair in sorted(set(get_bigrams(text1)) & set(get_bigrams(text2)))[:top_n]
+    ]
+
+
+def longest_common_word_sequence(text1, text2):
+    a = preprocess_text(text1).split()
+    b = preprocess_text(text2).split()
+
+    if not a or not b:
+        return {"sequence": "", "length": 0}
+
+    previous = [0] * (len(b) + 1)
+    best_length = 0
+    best_end = 0
+
+    for i, word1 in enumerate(a, start=1):
+        current = [0] * (len(b) + 1)
+        for j, word2 in enumerate(b, start=1):
+            if word1 == word2:
+                current[j] = previous[j - 1] + 1
+                if current[j] > best_length:
+                    best_length = current[j]
+                    best_end = i
+        previous = current
+
+    return {
+        "sequence": " ".join(a[best_end - best_length:best_end]),
+        "length": best_length
+    }
 
 
 def classify_similarity(score):
@@ -87,8 +115,10 @@ def document_statistics(text):
 
 
 def get_common_keywords(text1, text2):
-    return sorted(set(preprocess_text(text1, True, True).split()) &
-                  set(preprocess_text(text2, True, True).split()))
+    return sorted(
+        set(preprocess_text(text1, True, True).split()) &
+        set(preprocess_text(text2, True, True).split())
+    )
 
 
 def get_unique_keywords(text1, text2):
@@ -109,9 +139,10 @@ def find_duplicate_sentences(text1, text2):
 
 def sentence_similarity_analysis(text1, text2):
     results = []
+    candidates = split_sentences(text2)
     for sentence in split_sentences(text1):
         best_score, best_match = 0.0, ""
-        for candidate in split_sentences(text2):
+        for candidate in candidates:
             score = calculate_similarity(sentence, candidate)
             if score > best_score:
                 best_score, best_match = score, candidate
@@ -167,12 +198,15 @@ def sentence_results_csv(results):
 
 
 def generate_text_report(text1, text2, score, results, threshold=60):
+    longest = longest_common_word_sequence(text1, text2)
     lines = [
         "TEXTGUARD DOCUMENT SIMILARITY REPORT", "=" * 45,
         f"TF-IDF Similarity: {score:.2f}%",
         f"Jaccard Similarity: {jaccard_similarity(text1, text2):.2f}%",
         f"Bigram Similarity: {bigram_similarity(text1, text2):.2f}%",
         f"Similarity Level: {classify_similarity(score)}",
+        f"Longest Common Sequence: {longest['sequence'] or 'None'}",
+        f"Longest Sequence Length: {longest['length']} words",
         "", "DOCUMENT STATISTICS", str(statistics_comparison(text1, text2)),
         "", "COMMON KEYWORDS", ", ".join(get_common_keywords(text1, text2)) or "None",
         "", "UNIQUE KEYWORDS", str(get_unique_keywords(text1, text2)),
@@ -182,9 +216,11 @@ def generate_text_report(text1, text2, score, results, threshold=60):
     lines.extend(find_duplicate_sentences(text1, text2) or ["None"])
     lines.extend(["", "SENTENCE RESULTS"])
     for r in results:
-        lines.extend([f"Sentence: {r['sentence']}",
-                      f"Closest Match: {r['best_match']}",
-                      f"Similarity: {r['similarity']:.2f}%"])
+        lines.extend([
+            f"Sentence: {r['sentence']}",
+            f"Closest Match: {r['best_match']}",
+            f"Similarity: {r['similarity']:.2f}%"
+        ])
     lines.extend([
         "", f"Display Threshold: {threshold}%",
         f"Risk Summary (70% threshold): {plagiarism_risk_summary(text1, text2)}",
@@ -235,6 +271,7 @@ def generate_json_report(text1, text2, score, results, threshold=60,
             text1, text2, remove_stopwords, apply_stemming
         ),
         "common_bigrams": common_bigrams(text1, text2),
+        "longest_common_sequence": longest_common_word_sequence(text1, text2),
         "similarity_level": classify_similarity(score),
         "settings": {
             "remove_stopwords": remove_stopwords,
@@ -267,6 +304,7 @@ def analysis_summary(text1, text2, score, threshold=60):
         "overall_similarity": round(score, 2),
         "jaccard_similarity": jaccard_similarity(text1, text2),
         "bigram_similarity": bigram_similarity(text1, text2),
+        "longest_common_sequence": longest_common_word_sequence(text1, text2),
         "similarity_level": classify_similarity(score),
         "common_keywords": len(get_common_keywords(text1, text2)),
         "exact_duplicates": len(find_duplicate_sentences(text1, text2)),
