@@ -2,7 +2,7 @@
 import streamlit as st
 from nlp_utils import (
     preprocess_text, calculate_similarity, classify_similarity,
-    read_txt_file, read_pdf_file, document_statistics
+    read_txt_file, read_pdf_file, document_statistics, get_common_keywords
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -55,6 +55,11 @@ if st.button("Compare Documents", type="primary"):
         c1, c2 = st.columns(2)
         c1.write(document_statistics(text1))
         c2.write(document_statistics(text2))
+
+        st.subheader("Common Keywords")
+        keywords = get_common_keywords(text1, text2)
+        st.metric("Matching Keywords", len(keywords))
+        st.write(", ".join(keywords) if keywords else "No common keywords found.")
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))

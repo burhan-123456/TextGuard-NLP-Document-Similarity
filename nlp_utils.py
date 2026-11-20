@@ -10,15 +10,12 @@ from pypdf import PdfReader
 
 
 def preprocess_text(text, remove_stopwords=False, apply_stemming=False):
-    text = re.sub(r"[^\w\s]", " ", text.lower())
-    words = text.split()
-
+    words = re.sub(r"[^\w\s]", " ", text.lower()).split()
     if remove_stopwords:
         words = [w for w in words if w not in ENGLISH_STOP_WORDS]
     if apply_stemming:
         stemmer = PorterStemmer()
         words = [stemmer.stem(w) for w in words]
-
     return " ".join(words)
 
 
@@ -53,3 +50,9 @@ def document_statistics(text):
         "unique_words": len(set(preprocess_text(text).split())),
         "sentences": len([s for s in re.split(r"[.!?]+", text) if s.strip()])
     }
+
+
+def get_common_keywords(text1, text2):
+    words1 = set(preprocess_text(text1, True, True).split())
+    words2 = set(preprocess_text(text2, True, True).split())
+    return sorted(words1.intersection(words2))
