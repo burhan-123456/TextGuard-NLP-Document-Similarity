@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 
 from database import (
     initialize_database, save_comparison, get_history,
-    delete_comparison, clear_history, export_history_csv, export_history_json
+    delete_comparison, clear_history, export_history_csv,
+    export_history_json, history_analytics
 )
 from nlp_utils import (
     preprocess_text, calculate_similarity, jaccard_similarity,
@@ -345,7 +346,6 @@ if history:
 else:
     st.info("No matching records found.")
 
-# Commit 46: export complete database history
 st.subheader("Export Complete History")
 all_history = get_history()
 
@@ -353,15 +353,15 @@ if all_history:
     c1, c2 = st.columns(2)
     c1.download_button(
         "Download All History CSV",
-        data=export_history_csv(),
-        file_name="textguard_all_history.csv",
-        mime="text/csv"
+        export_history_csv(),
+        "textguard_all_history.csv",
+        "text/csv"
     )
     c2.download_button(
         "Download All History JSON",
-        data=export_history_json(),
-        file_name="textguard_all_history.json",
-        mime="application/json"
+        export_history_json(),
+        "textguard_all_history.json",
+        "application/json"
     )
 else:
     st.info("No records available for export.")
@@ -369,5 +369,63 @@ else:
 if st.button("Clear All History"):
     clear_history()
     st.rerun()
+
+# Commit 47: persistent history analytics
+st.divider()
+st.subheader("📊 History Analytics Dashboard")
+
+analytics = history_analytics()
+
+if analytics["total"] > 0:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Comparisons", analytics["total"])
+    c2.metric("Average TF-IDF", f"{analytics['average_similarity']:.2f}%")
+    c3.metric("Highest Similarity", f"{analytics['highest_similarity']:.2f}%")
+    c4.metric("Lowest Similarity", f"{analytics['lowest_similarity']:.2f}%")
+
+    st.subheader("Average Similarity by Method")
+    method_data = pd.DataFrame({
+        "Method": ["TF-IDF", "Jaccard", "Bigram"],
+        "Average (%)": [
+            analytics["average_similarity"],
+            analytics["average_jaccard"],
+            analytics["average_bigram"]
+        ]
+    }).set_index("Method")
+    st.bar_chart(method_data)
+
+    st.subheader("Similarity Trend Across Comparisons")
+    trend_df = pd.DataFrame(analytics["trend"]).set_index("Comparison")
+    st.line_chart(trend_df[["TF-IDF", "Jaccard", "Bigram"]])
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.subheader("Similarity Level Distribution")
+        level_df = pd.DataFrame(
+            list(analytics["level_distribution"].items()),
+            columns=["Level", "Count"]
+        ).set_index("Level")
+        st.bar_chart(level_df)
+
+    with c2:
+        st.subheader("Risk Level Distribution")
+        risk_df = pd.DataFrame(
+            list(analytics["risk_distribution"].items()),
+            columns=["Risk", "Count"]
+        ).set_index("Risk")
+        st.bar_chart(risk_df)
+
+    st.metric(
+        "Total Similar Sentences Across Comparisons",
+        analytics["total_similar_sentences"]
+    )
+
+    st.caption(
+        "These charts summarize saved comparison records. "
+        "Each record represents one document comparison."
+    )
+else:
+    st.info("Run document comparisons to generate analytics.")
 
 st.caption("History is stored locally in textguard.db.")

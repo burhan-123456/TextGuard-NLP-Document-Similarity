@@ -4,6 +4,7 @@ import csv
 import io
 import json
 from datetime import datetime, timezone
+from collections import Counter
 
 DB_NAME = "textguard.db"
 
@@ -56,9 +57,11 @@ def get_history(search="", level="All", risk="All"):
     if search.strip():
         query += " AND CAST(id AS TEXT) LIKE ?"
         params.append(f"%{search.strip()}%")
+
     if level != "All":
         query += " AND similarity_level = ?"
         params.append(level)
+
     if risk != "All":
         query += " AND risk_level = ?"
         params.append(risk)
@@ -97,12 +100,62 @@ def export_history_csv():
 
 def export_history_json():
     records = get_history()
-    return json.dumps(
-        {
-            "project": "TextGuard",
-            "exported_at_utc": datetime.now(timezone.utc).isoformat(),
-            "total_records": len(records),
-            "comparisons": records
-        },
-        indent=4
-    ).encode("utf-8")
+    return json.dumps({
+        "project": "TextGuard",
+        "exported_at_utc": datetime.now(timezone.utc).isoformat(),
+        "total_records": len(records),
+        "comparisons": records
+    }, indent=4).encode("utf-8")
+
+
+def history_analytics():
+    records = get_history()
+
+    if not records:
+        return {
+            "total": 0,
+            "average_similarity": 0.0,
+            "highest_similarity": 0.0,
+            "lowest_similarity": 0.0,
+            "average_jaccard": 0.0,
+            "average_bigram": 0.0,
+            "total_similar_sentences": 0,
+            "risk_distribution": {},
+            "level_distribution": {},
+            "trend": []
+        }
+
+    total = len(records)
+
+    return {
+        "total": total,
+        "average_similarity": round(
+            sum(r["tfidf"] for r in records) / total, 2
+        ),
+        "highest_similarity": max(r["tfidf"] for r in records),
+        "lowest_similarity": min(r["tfidf"] for r in records),
+        "average_jaccard": round(
+            sum(r["jaccard"] for r in records) / total, 2
+        ),
+        "average_bigram": round(
+            sum(r["bigram"] for r in records) / total, 2
+        ),
+        "total_similar_sentences": sum(
+            r["similar_sentences"] for r in records
+        ),
+        "risk_distribution": dict(
+            Counter(r["risk_level"] for r in records)
+        ),
+        "level_distribution": dict(
+            Counter(r["similarity_level"] for r in records)
+        ),
+        "trend": [
+            {
+                "Comparison": r["id"],
+                "TF-IDF": r["tfidf"],
+                "Jaccard": r["jaccard"],
+                "Bigram": r["bigram"]
+            }
+            for r in reversed(records)
+        ]
+    }
