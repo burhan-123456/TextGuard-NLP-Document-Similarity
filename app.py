@@ -61,6 +61,7 @@ with c1:
 with c2:
     apply_stemming = st.checkbox("Apply Stemming")
 threshold = st.slider("Sentence Similarity Threshold (%)", 0, 100, 60)
+min_words = st.slider("Minimum Words Per Sentence", 1, 20, 1)
 
 if st.button("🔍 Compare Documents", type="primary", use_container_width=True):
     if not text1.strip() or not text2.strip():
@@ -70,11 +71,12 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
         jaccard = jaccard_similarity(text1, text2, remove_stopwords, apply_stemming)
         bigram = bigram_similarity(text1, text2, remove_stopwords, apply_stemming)
         longest = longest_common_word_sequence(text1, text2)
-        results = sentence_similarity_analysis(text1, text2)
-        summary = analysis_summary(text1, text2, score, threshold)
+        results = sentence_similarity_analysis(text1, text2, min_words)
+        summary = analysis_summary(text1, text2, score, threshold, min_words)
         stats = statistics_comparison(text1, text2)
-        sentences1, sentences2 = split_sentences(text1), split_sentences(text2)
-        coverage = similarity_coverage(text1, text2, threshold)
+        sentences1 = split_sentences(text1, min_words)
+        sentences2 = split_sentences(text2, min_words)
+        coverage = similarity_coverage(text1, text2, threshold, min_words)
 
         st.divider()
         st.subheader("Analysis Dashboard")
@@ -119,7 +121,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.info(longest["sequence"] or "No consecutive matching words found.")
 
             st.subheader("Potential Plagiarism Risk Summary")
-            risk = plagiarism_risk_summary(text1, text2)
+            risk = plagiarism_risk_summary(text1, text2, 70, min_words)
             c1, c2, c3 = st.columns(3)
             c1.metric("Sentences Analyzed", risk["total_sentences"])
             c2.metric("Flagged Sentences", risk["flagged_sentences"])
@@ -144,6 +146,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 f"TF-IDF: **{score:.2f}%**, Jaccard: **{jaccard:.2f}%**, "
                 f"Bigram: **{bigram:.2f}%**. "
                 f"The longest common sequence contains **{longest['length']} words**. "
+                f"With a minimum sentence length of **{min_words} words**, "
                 f"**{summary['similar_sentences']}** sentences meet the {threshold}% threshold."
             )
 
@@ -158,7 +161,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 st.write("Document 2:", sentences2)
 
             st.subheader("Exact Duplicate Sentences")
-            duplicates = find_duplicate_sentences(text1, text2)
+            duplicates = find_duplicate_sentences(text1, text2, min_words)
             if duplicates:
                 for sentence in duplicates:
                     st.warning(sentence)
@@ -166,7 +169,10 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 st.success("No exact duplicate sentences found.")
 
             st.subheader("Sentence-Level Similarity")
-            st.dataframe(pd.DataFrame(results), use_container_width=True)
+            st.dataframe(
+                pd.DataFrame(results, columns=["sentence", "best_match", "similarity"]),
+                use_container_width=True
+            )
             st.download_button(
                 "Download Sentence Similarity CSV",
                 data=sentence_results_csv(results),
@@ -192,7 +198,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             }).set_index("Level"))
 
             st.subheader("Sentence Similarity Heatmap")
-            matrix = sentence_similarity_matrix(text1, text2)
+            matrix = sentence_similarity_matrix(text1, text2, min_words)
             if matrix and sentences2:
                 fig, ax = plt.subplots(figsize=(9, 5))
                 image = ax.imshow(matrix, cmap="YlOrRd", vmin=0, vmax=100, aspect="auto")
@@ -207,7 +213,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 st.pyplot(fig)
                 plt.close(fig)
             else:
-                st.info("No heatmap data available.")
+                st.info("No heatmap data available after sentence filtering.")
 
             st.subheader("Top Keyword Frequency Charts")
             c1, c2 = st.columns(2)
@@ -240,8 +246,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c2.write(", ".join(unique["document2"]) or "None")
 
             st.subheader("Common Bigrams")
-            bigrams = common_bigrams(text1, text2)
-            st.write(", ".join(bigrams) or "No common bigrams found.")
+            st.write(", ".join(common_bigrams(text1, text2)) or "No common bigrams found.")
 
             st.subheader("Word Frequency Analysis")
             c1, c2 = st.columns(2)
@@ -254,10 +259,10 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
 
         with tab5:
             st.subheader("Download Comparison Reports")
-            txt_report = generate_text_report(text1, text2, score, results, threshold)
+            txt_report = generate_text_report(text1, text2, score, results, threshold, min_words)
             json_report = generate_json_report(
                 text1, text2, score, results, threshold,
-                remove_stopwords, apply_stemming
+                remove_stopwords, apply_stemming, min_words
             )
             c1, c2 = st.columns(2)
             with c1:
