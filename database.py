@@ -1,5 +1,8 @@
 
 import sqlite3
+import csv
+import io
+import json
 from datetime import datetime, timezone
 
 DB_NAME = "textguard.db"
@@ -49,6 +52,7 @@ def save_comparison(entry):
 def get_history(search="", level="All", risk="All"):
     query = "SELECT * FROM comparisons WHERE 1=1"
     params = []
+
     if search.strip():
         query += " AND CAST(id AS TEXT) LIKE ?"
         params.append(f"%{search.strip()}%")
@@ -58,6 +62,7 @@ def get_history(search="", level="All", risk="All"):
     if risk != "All":
         query += " AND risk_level = ?"
         params.append(risk)
+
     query += " ORDER BY id DESC"
 
     with get_connection() as conn:
@@ -76,3 +81,28 @@ def delete_comparison(comparison_id):
 def clear_history():
     with get_connection() as conn:
         conn.execute("DELETE FROM comparisons")
+
+
+def export_history_csv():
+    records = get_history()
+    if not records:
+        return b""
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=records[0].keys())
+    writer.writeheader()
+    writer.writerows(records)
+    return output.getvalue().encode("utf-8-sig")
+
+
+def export_history_json():
+    records = get_history()
+    return json.dumps(
+        {
+            "project": "TextGuard",
+            "exported_at_utc": datetime.now(timezone.utc).isoformat(),
+            "total_records": len(records),
+            "comparisons": records
+        },
+        indent=4
+    ).encode("utf-8")

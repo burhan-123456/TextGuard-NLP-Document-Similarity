@@ -45,8 +45,8 @@ def jaccard_similarity(a, b, remove_stopwords=False, apply_stemming=False):
 
 
 def get_bigrams(text, remove_stopwords=False, apply_stemming=False):
-    w = preprocess_text(text, remove_stopwords, apply_stemming).split()
-    return list(zip(w, w[1:]))
+    words = preprocess_text(text, remove_stopwords, apply_stemming).split()
+    return list(zip(words, words[1:]))
 
 
 def bigram_similarity(a, b, remove_stopwords=False, apply_stemming=False):
@@ -56,13 +56,13 @@ def bigram_similarity(a, b, remove_stopwords=False, apply_stemming=False):
 
 
 def common_bigrams(a, b, top_n=20):
-    return [" ".join(x) for x in sorted(set(get_bigrams(a)) & set(get_bigrams(b)))[:top_n]]
+    return [" ".join(p) for p in sorted(set(get_bigrams(a)) & set(get_bigrams(b)))[:top_n]]
 
 
 def longest_common_word_sequence(a, b):
     a, b = preprocess_text(a).split(), preprocess_text(b).split()
     previous = [0] * (len(b) + 1)
-    best, end = 0, 0
+    best = end = 0
     for i, word in enumerate(a, 1):
         current = [0] * (len(b) + 1)
         for j, other in enumerate(b, 1):
@@ -107,7 +107,8 @@ def get_common_keywords(a, b):
 
 
 def get_unique_keywords(a, b):
-    x, y = set(preprocess_text(a, True, True).split()), set(preprocess_text(b, True, True).split())
+    x = set(preprocess_text(a, True, True).split())
+    y = set(preprocess_text(b, True, True).split())
     return {"document1": sorted(x-y), "document2": sorted(y-x)}
 
 
@@ -122,8 +123,10 @@ def word_level_comparison(a, b):
 
 def find_duplicate_sentences(a, b, min_words=1):
     normalized = {preprocess_text(s) for s in split_sentences(b, min_words)}
-    return list(dict.fromkeys(s for s in split_sentences(a, min_words)
-                              if preprocess_text(s) and preprocess_text(s) in normalized))
+    return list(dict.fromkeys(
+        s for s in split_sentences(a, min_words)
+        if preprocess_text(s) and preprocess_text(s) in normalized
+    ))
 
 
 def sentence_similarity_analysis(a, b, min_words=1):
@@ -135,8 +138,11 @@ def sentence_similarity_analysis(a, b, min_words=1):
             score = calculate_similarity(sentence, candidate)
             if score > best:
                 best, match = score, candidate
-        results.append({"sentence": sentence, "best_match": match,
-                        "similarity": round(best, 2)})
+        results.append({
+            "sentence": sentence,
+            "best_match": match,
+            "similarity": round(best, 2)
+        })
     return results
 
 
