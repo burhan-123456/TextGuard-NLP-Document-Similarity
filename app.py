@@ -16,7 +16,7 @@ from nlp_utils import (
     generate_text_report, word_frequency, top_keyword_frequencies,
     similarity_coverage, generate_json_report, analysis_summary,
     highlight_sentence, sort_sentence_results, search_sentence_results,
-    generate_html_report
+    generate_html_report, word_level_comparison
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -62,11 +62,8 @@ with c1:
     remove_stopwords = st.checkbox("Remove Stopwords")
 with c2:
     apply_stemming = st.checkbox("Apply Stemming")
-
 threshold = st.slider("Sentence Similarity Threshold (%)", 0, 100, 60)
 min_words = st.slider("Minimum Words Per Sentence", 1, 20, 1)
-
-# Commit 40: adjustable keyword count
 keyword_limit = st.slider("Number of Top Keywords", 5, 30, 10)
 
 if st.button("🔍 Compare Documents", type="primary", use_container_width=True):
@@ -110,11 +107,9 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1, c2 = st.columns(2)
             c1.write("**Document 1**", stats["Document 1"])
             c2.write("**Document 2**", stats["Document 2"])
-
-            st.subheader("Statistics Comparison")
             st.bar_chart(pd.DataFrame(stats))
 
-            st.subheader("Similarity Methods")
+            st.subheader("Similarity Method Comparison")
             st.bar_chart(pd.DataFrame({
                 "Method": ["TF-IDF", "Jaccard", "Bigram"],
                 "Score": [score, jaccard, bigram]
@@ -124,8 +119,8 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.metric("Matching Words", longest["length"])
             st.info(longest["sequence"] or "None")
 
-            risk = plagiarism_risk_summary(text1, text2, 70, min_words)
             st.subheader("Potential Plagiarism Risk Summary")
+            risk = plagiarism_risk_summary(text1, text2, 70, min_words)
             c1, c2, c3 = st.columns(3)
             c1.metric("Sentences Analyzed", risk["total_sentences"])
             c2.metric("Flagged Sentences", risk["flagged_sentences"])
@@ -141,14 +136,14 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 "Coverage": [coverage["document1"], coverage["document2"]]
             }).set_index("Document"))
             st.caption(
-                f"Matched sentences: {coverage['matched1']}/{coverage['total1']} "
-                f"and {coverage['matched2']}/{coverage['total2']}."
+                f"Matched: {coverage['matched1']}/{coverage['total1']} and "
+                f"{coverage['matched2']}/{coverage['total2']}."
             )
 
             st.subheader("Final Analysis Summary")
             st.write(
-                f"Overall similarity is **{score:.2f}%**. "
-                f"**{summary['similar_sentences']}** sentences meet the threshold."
+                f"Overall similarity: **{score:.2f}%**. "
+                f"Similar sentences: **{summary['similar_sentences']}**."
             )
 
         with tab2:
@@ -157,7 +152,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1.metric("Document 1 Sentences", len(sentences1))
             c2.metric("Document 2 Sentences", len(sentences2))
 
-            with st.expander("View Extracted Sentences"):
+            with st.expander("Extracted Sentences"):
                 st.write("Document 1:", sentences1)
                 st.write("Document 2:", sentences2)
 
@@ -169,9 +164,8 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             else:
                 st.success("No exact duplicates found.")
 
-            st.subheader("Sentence-Level Similarity")
             sort_order = st.selectbox(
-                "Sort Matches", ["Highest First", "Lowest First"]
+                "Sort Sentence Matches", ["Highest First", "Lowest First"]
             )
             search_query = st.text_input("Search Sentence Matches")
             filtered = search_sentence_results(
@@ -195,7 +189,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                     st.write("**Closest Match:**", r["best_match"])
                     st.warning(f"Similarity: {r['similarity']:.2f}%")
             else:
-                st.info("No matching passages meet the threshold.")
+                st.info("No matches meet the threshold.")
 
             st.subheader("Color-Coded Comparison")
             st.caption("Red = high, yellow = moderate, green = low, gray = below threshold.")
@@ -245,8 +239,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.subheader(f"Top {keyword_limit} Keyword Frequency Charts")
             c1, c2 = st.columns(2)
             for column, text, label in [
-                (c1, text1, "Document 1"),
-                (c2, text2, "Document 2")
+                (c1, text1, "Document 1"), (c2, text2, "Document 2")
             ]:
                 with column:
                     st.write(f"**{label}**")
@@ -278,16 +271,33 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
 
             st.subheader(f"Top {keyword_limit} Word Frequencies")
             c1, c2 = st.columns(2)
-            c1.write("**Document 1**")
             c1.dataframe(pd.DataFrame(
                 list(word_frequency(text1, keyword_limit).items()),
                 columns=["Word", "Frequency"]
             ))
-            c2.write("**Document 2**")
             c2.dataframe(pd.DataFrame(
                 list(word_frequency(text2, keyword_limit).items()),
                 columns=["Word", "Frequency"]
             ))
+
+            # Commit 41: word-level comparison
+            st.subheader("Word-Level Comparison")
+            word_rows = word_level_comparison(text1, text2)
+            word_filter = st.selectbox(
+                "Filter Words",
+                ["All", "Common", "Document 1 Only", "Document 2 Only"]
+            )
+            if word_filter != "All":
+                word_rows = [r for r in word_rows if r["Status"] == word_filter]
+
+            st.metric("Displayed Words", len(word_rows))
+            st.dataframe(pd.DataFrame(
+                word_rows,
+                columns=[
+                    "Word", "Document 1 Frequency",
+                    "Document 2 Frequency", "Status"
+                ]
+            ), use_container_width=True)
 
         with tab5:
             st.subheader("Download Comparison Reports")
