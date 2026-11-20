@@ -1,4 +1,6 @@
 import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 def preprocess_text(text):
@@ -10,13 +12,24 @@ def preprocess_text(text):
 
 
 def calculate_similarity(text1, text2):
-    words1 = set(preprocess_text(text1).split())
-    words2 = set(preprocess_text(text2).split())
+    cleaned1 = preprocess_text(text1)
+    cleaned2 = preprocess_text(text2)
 
-    union = words1.union(words2)
-    intersection = words1.intersection(words2)
-
-    if not union:
+    if not cleaned1 or not cleaned2:
         return 0.0
 
-    return len(intersection) / len(union) * 100
+    vectorizer = TfidfVectorizer()
+
+    try:
+        vectors = vectorizer.fit_transform(
+            [cleaned1, cleaned2]
+        )
+    except ValueError:
+        return 0.0
+
+    similarity = cosine_similarity(
+        vectors[0:1],
+        vectors[1:2]
+    )[0][0]
+
+    return float(similarity * 100)
