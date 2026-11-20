@@ -10,13 +10,11 @@ from pypdf import PdfReader
 
 
 def preprocess_text(text, remove_stopwords=False, apply_stemming=False):
-    text = text.lower()
-    text = re.sub(r"[^\w\s]", " ", text)
+    text = re.sub(r"[^\w\s]", " ", text.lower())
     words = text.split()
 
     if remove_stopwords:
         words = [w for w in words if w not in ENGLISH_STOP_WORDS]
-
     if apply_stemming:
         stemmer = PorterStemmer()
         words = [stemmer.stem(w) for w in words]
@@ -24,8 +22,9 @@ def preprocess_text(text, remove_stopwords=False, apply_stemming=False):
     return " ".join(words)
 
 
-def calculate_similarity(text1, text2):
-    a, b = preprocess_text(text1), preprocess_text(text2)
+def calculate_similarity(text1, text2, remove_stopwords=False, apply_stemming=False):
+    a = preprocess_text(text1, remove_stopwords, apply_stemming)
+    b = preprocess_text(text2, remove_stopwords, apply_stemming)
     if not a or not b:
         return 0.0
     try:

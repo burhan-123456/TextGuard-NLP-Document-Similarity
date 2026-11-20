@@ -37,9 +37,14 @@ else:
     text1 = extract_file(file1)
     text2 = extract_file(file2)
 
+st.subheader("NLP Settings")
+remove_stopwords = st.checkbox("Remove Stopwords")
+apply_stemming = st.checkbox("Apply Stemming")
+
 if st.button("Compare Documents", type="primary"):
     if text1.strip() and text2.strip():
-        score = calculate_similarity(text1, text2)
+        score = calculate_similarity(text1, text2, remove_stopwords, apply_stemming)
+
         st.subheader("Similarity Results")
         c1, c2 = st.columns(2)
         c1.metric("Similarity", f"{score:.2f}%")
@@ -51,8 +56,8 @@ if st.button("Compare Documents", type="primary"):
         c1.write(document_statistics(text1))
         c2.write(document_statistics(text2))
 
-        with st.expander("Preprocessed Text with Stemming"):
-            st.write("Document 1:", preprocess_text(text1, True, True))
-            st.write("Document 2:", preprocess_text(text2, True, True))
+        with st.expander("Preprocessed Text"):
+            st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))
+            st.write("Document 2:", preprocess_text(text2, remove_stopwords, apply_stemming))
     else:
         st.warning("Please provide both documents.")
