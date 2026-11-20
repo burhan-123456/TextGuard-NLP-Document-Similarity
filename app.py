@@ -40,23 +40,19 @@ else:
 if st.button("Compare Documents", type="primary"):
     if text1.strip() and text2.strip():
         score = calculate_similarity(text1, text2)
-        level = classify_similarity(score)
-
         st.subheader("Similarity Results")
         c1, c2 = st.columns(2)
         c1.metric("Similarity", f"{score:.2f}%")
-        c2.metric("Level", level)
+        c2.metric("Level", classify_similarity(score))
         st.progress(min(max(score / 100, 0.0), 1.0))
 
         st.subheader("Document Statistics")
         c1, c2 = st.columns(2)
-        with c1:
-            st.write("Document 1", document_statistics(text1))
-        with c2:
-            st.write("Document 2", document_statistics(text2))
+        c1.write(document_statistics(text1))
+        c2.write(document_statistics(text2))
 
-        with st.expander("Preprocessed Text (Stopwords Removed)"):
-            st.write("Document 1:", preprocess_text(text1, True))
-            st.write("Document 2:", preprocess_text(text2, True))
+        with st.expander("Preprocessed Text with Stemming"):
+            st.write("Document 1:", preprocess_text(text1, True, True))
+            st.write("Document 2:", preprocess_text(text2, True, True))
     else:
         st.warning("Please provide both documents.")

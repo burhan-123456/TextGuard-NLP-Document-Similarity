@@ -1,5 +1,7 @@
 
 import re
+# pyrefly: ignore[missing-import]
+from nltk.stem import PorterStemmer
 from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -7,21 +9,23 @@ from sklearn.metrics.pairwise import cosine_similarity
 from pypdf import PdfReader
 
 
-def preprocess_text(text, remove_stopwords=False):
+def preprocess_text(text, remove_stopwords=False, apply_stemming=False):
     text = text.lower()
     text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
+    words = text.split()
 
     if remove_stopwords:
-        words = [w for w in text.split() if w not in ENGLISH_STOP_WORDS]
-        text = " ".join(words)
+        words = [w for w in words if w not in ENGLISH_STOP_WORDS]
 
-    return text
+    if apply_stemming:
+        stemmer = PorterStemmer()
+        words = [stemmer.stem(w) for w in words]
+
+    return " ".join(words)
 
 
 def calculate_similarity(text1, text2):
-    a = preprocess_text(text1)
-    b = preprocess_text(text2)
+    a, b = preprocess_text(text1), preprocess_text(text2)
     if not a or not b:
         return 0.0
     try:
@@ -32,11 +36,7 @@ def calculate_similarity(text1, text2):
 
 
 def classify_similarity(score):
-    if score >= 70:
-        return "High"
-    if score >= 40:
-        return "Moderate"
-    return "Low"
+    return "High" if score >= 70 else "Moderate" if score >= 40 else "Low"
 
 
 def read_txt_file(file):
@@ -44,15 +44,13 @@ def read_txt_file(file):
 
 
 def read_pdf_file(file):
-    reader = PdfReader(file)
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    return "\n".join(p.extract_text() or "" for p in PdfReader(file).pages)
 
 
 def document_statistics(text):
-    sentences = [s for s in re.split(r"[.!?]+", text) if s.strip()]
     return {
         "words": len(text.split()),
         "characters": len(text),
         "unique_words": len(set(preprocess_text(text).split())),
-        "sentences": len(sentences)
+        "sentences": len([s for s in re.split(r"[.!?]+", text) if s.strip()])
     }
