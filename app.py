@@ -14,7 +14,8 @@ from nlp_utils import (
     statistics_comparison, sentence_similarity_matrix, sentence_results_csv,
     generate_text_report, word_frequency, top_keyword_frequencies,
     similarity_coverage, generate_json_report, analysis_summary,
-    highlight_sentence, sort_sentence_results, search_sentence_results
+    highlight_sentence, sort_sentence_results, search_sentence_results,
+    generate_html_report
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -389,7 +390,12 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 remove_stopwords, apply_stemming, min_words
             )
 
-            c1, c2 = st.columns(2)
+            html_report = generate_html_report(
+                text1, text2, score, results, threshold,
+                min_words, remove_stopwords, apply_stemming
+            )
+
+            c1, c2, c3 = st.columns(3)
 
             with c1:
                 st.download_button(
@@ -405,6 +411,14 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                     json_report.encode("utf-8"),
                     "textguard_report.json",
                     "application/json"
+                )
+
+            with c3:
+                st.download_button(
+                    "Download HTML Report",
+                    html_report.encode("utf-8"),
+                    "textguard_report.html",
+                    "text/html"
                 )
 
             with st.expander("Preprocessed Text"):

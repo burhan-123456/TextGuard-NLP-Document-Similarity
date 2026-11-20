@@ -206,7 +206,6 @@ def plagiarism_risk_summary(text1, text2, threshold=70, min_words=1):
 
     flagged = sum(r["similarity"] >= threshold for r in results)
     percentage = flagged / len(results) * 100
-
     risk = "High" if percentage >= 60 else "Moderate" if percentage >= 30 else "Low"
 
     return {
@@ -364,6 +363,194 @@ def highlight_sentence(sentence, score, threshold=60):
         f'<p style="margin:6px 0 0 0;">{safe_sentence}</p>'
         f'</div>'
     )
+
+
+def generate_html_report(text1, text2, score, results, threshold=60,
+                         min_words=1, remove_stopwords=False,
+                         apply_stemming=False):
+    jaccard = jaccard_similarity(
+        text1, text2, remove_stopwords, apply_stemming
+    )
+    bigram = bigram_similarity(
+        text1, text2, remove_stopwords, apply_stemming
+    )
+    longest = longest_common_word_sequence(text1, text2)
+    risk = plagiarism_risk_summary(text1, text2, 70, min_words)
+    stats1 = document_statistics(text1)
+    stats2 = document_statistics(text2)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    rows = []
+
+    for result in results:
+        similarity = result["similarity"]
+        color = (
+            "#fee2e2" if similarity >= 70
+            else "#fef3c7" if similarity >= 40
+            else "#dcfce7"
+        )
+        if similarity < threshold:
+            color = "#f1f5f9"
+
+        rows.append(
+            f'<tr style="background:{color}">'
+            f'<td>{html.escape(result["sentence"])}</td>'
+            f'<td>{html.escape(result["best_match"])}</td>'
+            f'<td>{similarity:.2f}%</td>'
+            f'</tr>'
+        )
+
+    table_rows = "\n".join(rows) if rows else (
+        '<tr><td colspan="3">No sentences available.</td></tr>'
+    )
+
+    common_words = ", ".join(get_common_keywords(text1, text2)) or "None"
+    common_phrases = ", ".join(common_bigrams(text1, text2)) or "None"
+
+    def stats_table(stats):
+        return "".join(
+            f"<tr><th>{html.escape(key.replace('_', ' ').title())}</th>"
+            f"<td>{value}</td></tr>"
+            for key, value in stats.items()
+        )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TextGuard Similarity Report</title>
+<style>
+body {{
+    font-family: Arial, sans-serif;
+    max-width: 1100px;
+    margin: 35px auto;
+    padding: 20px;
+    background: #f8fafc;
+    color: #1e293b;
+}}
+header {{
+    background: #172554;
+    color: white;
+    padding: 28px;
+    border-radius: 12px;
+}}
+h1 {{ margin: 0 0 8px; }}
+section {{
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    margin-top: 22px;
+    border: 1px solid #e2e8f0;
+}}
+.metrics {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}}
+.metric {{
+    background: #eff6ff;
+    padding: 18px;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 160px;
+}}
+.metric strong {{
+    display: block;
+    font-size: 25px;
+    margin-top: 8px;
+}}
+table {{
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 12px;
+}}
+th, td {{
+    border: 1px solid #cbd5e1;
+    padding: 12px;
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}}
+th {{ background: #e2e8f0; }}
+.note {{ color: #64748b; font-size: 14px; }}
+@media print {{
+    body {{ background: white; margin: 0; }}
+    section {{ break-inside: avoid; }}
+}}
+</style>
+</head>
+<body>
+<header>
+<h1>TextGuard Similarity Report</h1>
+<p>NLP Document Similarity &amp; Plagiarism Screening</p>
+<p>Generated: {timestamp}</p>
+</header>
+
+<section>
+<h2>Overall Similarity</h2>
+<div class="metrics">
+<div class="metric">TF-IDF Cosine<strong>{score:.2f}%</strong></div>
+<div class="metric">Jaccard<strong>{jaccard:.2f}%</strong></div>
+<div class="metric">Bigram<strong>{bigram:.2f}%</strong></div>
+<div class="metric">Similarity Level<strong>{classify_similarity(score)}</strong></div>
+</div>
+</section>
+
+<section>
+<h2>Document Statistics</h2>
+<h3>Document 1</h3>
+<table>{stats_table(stats1)}</table>
+<h3>Document 2</h3>
+<table>{stats_table(stats2)}</table>
+</section>
+
+<section>
+<h2>Matching Content</h2>
+<p><strong>Longest Common Word Sequence:</strong>
+{html.escape(longest["sequence"]) or "None"}</p>
+<p><strong>Consecutive Matching Words:</strong> {longest["length"]}</p>
+<p><strong>Common Keywords:</strong> {html.escape(common_words)}</p>
+<p><strong>Common Bigrams:</strong> {html.escape(common_phrases)}</p>
+</section>
+
+<section>
+<h2>Potential Plagiarism Risk</h2>
+<p><strong>Risk:</strong> {risk["risk"]}</p>
+<p><strong>Flagged Sentences:</strong>
+{risk["flagged_sentences"]} / {risk["total_sentences"]}</p>
+<p><strong>Flagged Percentage:</strong>
+{risk["flagged_percentage"]:.2f}%</p>
+<p class="note">Risk uses a fixed 70% sentence similarity threshold.</p>
+</section>
+
+<section>
+<h2>Sentence Comparison</h2>
+<p class="note">Minimum sentence length: {min_words} words.
+Display threshold: {threshold}%.</p>
+<table>
+<thead>
+<tr>
+<th>Document 1 Sentence</th>
+<th>Closest Document 2 Sentence</th>
+<th>Similarity</th>
+</tr>
+</thead>
+<tbody>
+{table_rows}
+</tbody>
+</table>
+<p class="note">Red: high similarity; yellow: moderate;
+green: low; gray: below selected threshold.</p>
+</section>
+
+<section>
+<h2>Disclaimer</h2>
+<p>Text similarity is not proof of plagiarism.
+Results require human review and source verification.</p>
+</section>
+</body>
+</html>"""
 
 
 def generate_json_report(text1, text2, score, results, threshold=60,
