@@ -1,31 +1,32 @@
-# pyrefly: ignore[missing-import]
 
 import re
-# pyrefly: ignore[missing-import]
-from pypdf import PdfReader
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
 
+# pyrefly: ignore[missing-import]
+from pypdf import PdfReader
 
-def preprocess_text(text):
+
+def preprocess_text(text, remove_stopwords=False):
     text = text.lower()
     text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
+    text = re.sub(r"\s+", " ", text).strip()
+
+    if remove_stopwords:
+        words = [w for w in text.split() if w not in ENGLISH_STOP_WORDS]
+        text = " ".join(words)
+
+    return text
 
 
 def calculate_similarity(text1, text2):
-    cleaned1 = preprocess_text(text1)
-    cleaned2 = preprocess_text(text2)
-
-    if not cleaned1 or not cleaned2:
+    a = preprocess_text(text1)
+    b = preprocess_text(text2)
+    if not a or not b:
         return 0.0
-
     try:
-        vectorizer = TfidfVectorizer()
-        vectors = vectorizer.fit_transform([cleaned1, cleaned2])
-        score = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
-        return float(score * 100)
+        vectors = TfidfVectorizer().fit_transform([a, b])
+        return float(cosine_similarity(vectors[0:1], vectors[1:2])[0][0] * 100)
     except ValueError:
         return 0.0
 
@@ -33,32 +34,25 @@ def calculate_similarity(text1, text2):
 def classify_similarity(score):
     if score >= 70:
         return "High"
-    elif score >= 40:
+    if score >= 40:
         return "Moderate"
     return "Low"
 
 
-def read_txt_file(uploaded_file):
-    return uploaded_file.getvalue().decode("utf-8-sig", errors="replace")
+def read_txt_file(file):
+    return file.getvalue().decode("utf-8-sig", errors="replace")
 
 
-def read_pdf_file(uploaded_file):
-    reader = PdfReader(uploaded_file)
+def read_pdf_file(file):
+    reader = PdfReader(file)
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
 def document_statistics(text):
-    words = text.split()
-    cleaned_words = preprocess_text(text).split()
-    sentences = [
-        sentence.strip()
-        for sentence in re.split(r"[.!?]+", text)
-        if sentence.strip()
-    ]
-
+    sentences = [s for s in re.split(r"[.!?]+", text) if s.strip()]
     return {
-        "words": len(words),
+        "words": len(text.split()),
         "characters": len(text),
-        "unique_words": len(set(cleaned_words)),
+        "unique_words": len(set(preprocess_text(text).split())),
         "sentences": len(sentences)
     }
