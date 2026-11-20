@@ -11,7 +11,8 @@ from nlp_utils import (
     find_duplicate_sentences, sentence_similarity_analysis,
     get_similar_sentences, plagiarism_risk_summary,
     similarity_distribution, statistics_comparison,
-    sentence_similarity_matrix, sentence_results_csv
+    sentence_similarity_matrix, sentence_results_csv,
+    generate_text_report
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -101,7 +102,6 @@ if st.button("Compare Documents", type="primary"):
         c1, c2 = st.columns(2)
         c1.metric("Document 1 Sentences", len(sentences1))
         c2.metric("Document 2 Sentences", len(sentences2))
-
         with st.expander("View Extracted Sentences"):
             st.write("Document 1:", sentences1)
             st.write("Document 2:", sentences2)
@@ -126,7 +126,6 @@ if st.button("Compare Documents", type="primary"):
 
         st.subheader("Potentially Similar Passages")
         similar = [r for r in results if r["similarity"] >= threshold]
-
         if similar:
             for result in similar:
                 st.write("**Document 1:**", result["sentence"])
@@ -152,7 +151,6 @@ if st.button("Compare Documents", type="primary"):
 
         st.subheader("Sentence Similarity Heatmap")
         matrix = sentence_similarity_matrix(text1, text2)
-
         if matrix and sentences2:
             fig, ax = plt.subplots(figsize=(9, 5))
             image = ax.imshow(matrix, cmap="YlOrRd", vmin=0, vmax=100, aspect="auto")
@@ -166,6 +164,16 @@ if st.button("Compare Documents", type="primary"):
             fig.tight_layout()
             st.pyplot(fig)
             plt.close(fig)
+
+        st.subheader("Download Comparison Report")
+        report = generate_text_report(text1, text2, score, results, threshold)
+
+        st.download_button(
+            "Download TXT Report",
+            data=report.encode("utf-8"),
+            file_name="textguard_report.txt",
+            mime="text/plain"
+        )
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))

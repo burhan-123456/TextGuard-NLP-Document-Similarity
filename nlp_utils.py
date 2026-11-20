@@ -1,5 +1,7 @@
 
 import re
+import csv
+import io
 from collections import Counter
 
 from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
@@ -84,51 +86,35 @@ def find_duplicate_sentences(text1, text2):
 def sentence_similarity_analysis(text1, text2):
     results = []
     sentences2 = split_sentences(text2)
-
     for sentence in split_sentences(text1):
         best_score, best_match = 0.0, ""
         for candidate in sentences2:
             score = calculate_similarity(sentence, candidate)
             if score > best_score:
                 best_score, best_match = score, candidate
-
         results.append({
             "sentence": sentence,
             "best_match": best_match,
             "similarity": round(best_score, 2)
         })
-
     return results
 
 
 def get_similar_sentences(text1, text2, threshold=60):
-    return [
-        r for r in sentence_similarity_analysis(text1, text2)
-        if r["similarity"] >= threshold
-    ]
+    return [r for r in sentence_similarity_analysis(text1, text2)
+            if r["similarity"] >= threshold]
 
 
 def plagiarism_risk_summary(text1, text2, threshold=70):
     results = sentence_similarity_analysis(text1, text2)
-
     if not results or not split_sentences(text2):
-        return {
-            "total_sentences": len(results),
-            "flagged_sentences": 0,
-            "flagged_percentage": 0.0,
-            "risk": "Not Available"
-        }
-
+        return {"total_sentences": len(results), "flagged_sentences": 0,
+                "flagged_percentage": 0.0, "risk": "Not Available"}
     flagged = sum(r["similarity"] >= threshold for r in results)
     percentage = flagged / len(results) * 100
     risk = "High" if percentage >= 60 else "Moderate" if percentage >= 30 else "Low"
-
-    return {
-        "total_sentences": len(results),
-        "flagged_sentences": flagged,
-        "flagged_percentage": round(percentage, 2),
-        "risk": risk
-    }
+    return {"total_sentences": len(results), "flagged_sentences": flagged,
+            "flagged_percentage": round(percentage, 2), "risk": risk}
 
 
 def similarity_distribution(results):
@@ -147,27 +133,69 @@ def statistics_comparison(text1, text2):
 
 def sentence_similarity_matrix(text1, text2):
     return [
-        [
-            round(calculate_similarity(s1, s2), 2)
-            for s2 in split_sentences(text2)
-        ]
-        for s1 in split_sentences(text1)
+        [round(calculate_similarity(a, b), 2) for b in split_sentences(text2)]
+        for a in split_sentences(text1)
     ]
 
 
 def sentence_results_csv(results):
-    import csv
-    import io
-
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["Document 1 Sentence", "Closest Document 2 Sentence", "Similarity (%)"])
+    for result in results:
+        writer.writerow([result["sentence"], result["best_match"], result["similarity"]])
+    return output.getvalue().encode("utf-8-sig")
+
+
+def generate_text_report(text1, text2, score, results, threshold=60):
+    stats1 = document_statistics(text1)
+    stats2 = document_statistics(text2)
+    common = get_common_keywords(text1, text2)
+    unique = get_unique_keywords(text1, text2)
+    duplicates = find_duplicate_sentences(text1, text2)
+    summary = plagiarism_risk_summary(text1, text2)
+
+    lines = [
+        "TEXTGUARD - DOCUMENT SIMILARITY REPORT",
+        "=" * 50,
+        f"Overall Similarity: {score:.2f}%",
+        f"Similarity Level: {classify_similarity(score)}",
+        "",
+        "DOCUMENT 1 STATISTICS",
+        str(stats1),
+        "",
+        "DOCUMENT 2 STATISTICS",
+        str(stats2),
+        "",
+        "COMMON KEYWORDS",
+        ", ".join(common) or "None",
+        "",
+        "UNIQUE KEYWORDS - DOCUMENT 1",
+        ", ".join(unique["document1"]) or "None",
+        "",
+        "UNIQUE KEYWORDS - DOCUMENT 2",
+        ", ".join(unique["document2"]) or "None",
+        "",
+        "EXACT DUPLICATE SENTENCES"
+    ]
+
+    lines.extend(duplicates if duplicates else ["None"])
+    lines.extend(["", "SENTENCE SIMILARITY RESULTS"])
 
     for result in results:
-        writer.writerow([
-            result["sentence"],
-            result["best_match"],
-            result["similarity"]
-        ])
+        lines.append(f"Sentence: {result['sentence']}")
+        lines.append(f"Closest Match: {result['best_match']}")
+        lines.append(f"Similarity: {result['similarity']:.2f}%")
+        lines.append("-" * 40)
 
-    return output.getvalue().encode("utf-8-sig")
+    lines.extend([
+        "",
+        f"Selected Display Threshold: {threshold}%",
+        f"Risk Level: {summary['risk']}",
+        f"Flagged Sentences (70% threshold): {summary['flagged_sentences']}",
+        f"Flagged Percentage: {summary['flagged_percentage']:.2f}%",
+        "",
+        "DISCLAIMER: Similarity does not prove plagiarism."
+    ])
+
+    return "\n".join(lines)
