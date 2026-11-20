@@ -71,9 +71,9 @@ st.write(
 
 st.divider()
 
-# -------------------------------
+# ---------------------------------
 # DOCUMENT INPUT
-# -------------------------------
+# ---------------------------------
 
 method = st.radio(
     "Input Method",
@@ -148,9 +148,9 @@ else:
                 st.text(text[:3000])
 
 
-# -------------------------------
+# ---------------------------------
 # NLP SETTINGS
-# -------------------------------
+# ---------------------------------
 
 st.divider()
 st.subheader("NLP Settings")
@@ -183,9 +183,9 @@ keyword_limit = st.slider(
 )
 
 
-# -------------------------------
+# ---------------------------------
 # DOCUMENT COMPARISON
-# -------------------------------
+# ---------------------------------
 
 if st.button(
     "🔍 Compare Documents",
@@ -314,9 +314,9 @@ if st.button(
             "Reports"
         ])
 
-        # -------------------------------
-        # OVERVIEW
-        # -------------------------------
+        # ---------------------------------
+        # OVERVIEW TAB
+        # ---------------------------------
 
         with tab1:
 
@@ -453,9 +453,9 @@ if st.button(
                 f"**{summary['similar_sentences']}**."
             )
 
-        # -------------------------------
-        # SENTENCE ANALYSIS
-        # -------------------------------
+        # ---------------------------------
+        # SENTENCE ANALYSIS TAB
+        # ---------------------------------
 
         with tab2:
 
@@ -608,9 +608,9 @@ if st.button(
                         result["best_match"]
                     )
 
-        # -------------------------------
-        # VISUALIZATIONS
-        # -------------------------------
+        # ---------------------------------
+        # VISUALIZATIONS TAB
+        # ---------------------------------
 
         with tab3:
 
@@ -747,9 +747,9 @@ if st.button(
                             "No keywords available."
                         )
 
-        # -------------------------------
-        # KEYWORDS
-        # -------------------------------
+        # ---------------------------------
+        # KEYWORDS TAB
+        # ---------------------------------
 
         with tab4:
 
@@ -889,9 +889,9 @@ if st.button(
                 use_container_width=True
             )
 
-        # -------------------------------
-        # REPORTS
-        # -------------------------------
+        # ---------------------------------
+        # REPORTS TAB
+        # ---------------------------------
 
         with tab5:
 
@@ -987,9 +987,9 @@ if st.button(
         )
 
 
-# -------------------------------
+# ---------------------------------
 # SAVED COMPARISON HISTORY
-# -------------------------------
+# ---------------------------------
 
 st.divider()
 st.subheader("📜 Saved Comparison History")
@@ -1069,9 +1069,9 @@ else:
     )
 
 
-# -------------------------------
+# ---------------------------------
 # EXPORT COMPLETE HISTORY
-# -------------------------------
+# ---------------------------------
 
 st.subheader(
     "Export Complete History"
@@ -1105,9 +1105,9 @@ else:
     )
 
 
-# -------------------------------
-# COMMIT 48: CONFIRM CLEAR HISTORY
-# -------------------------------
+# ---------------------------------
+# CLEAR HISTORY WITH CONFIRMATION
+# ---------------------------------
 
 st.subheader(
     "Clear Comparison History"
@@ -1138,9 +1138,9 @@ if st.button(
     st.rerun()
 
 
-# -------------------------------
+# ---------------------------------
 # HISTORY ANALYTICS DASHBOARD
-# -------------------------------
+# ---------------------------------
 
 st.divider()
 st.subheader(
@@ -1266,6 +1266,122 @@ else:
         "Run document comparisons to generate analytics."
     )
 
+
+# ---------------------------------
+# COMMIT 49: ABOUT TEXTGUARD
+# ---------------------------------
+
+st.divider()
+
+with st.expander("ℹ️ About TextGuard"):
+
+    st.subheader(
+        "TextGuard — NLP Document Similarity Analyzer"
+    )
+
+    st.write(
+        "TextGuard is a Python-based Natural Language "
+        "Processing application designed to compare "
+        "two documents and identify potentially "
+        "similar or duplicated content."
+    )
+
+    st.markdown("### Technologies Used")
+
+    st.write(
+        "Python, Streamlit, Scikit-learn, NLTK, "
+        "Pandas, Matplotlib, SQLite, and PyPDF."
+    )
+
+    st.markdown("### NLP Techniques")
+
+    st.write(
+        "**TF-IDF Cosine Similarity:** "
+        "Converts documents into numerical vectors "
+        "and measures their similarity using "
+        "cosine similarity."
+    )
+
+    st.write(
+        "**Jaccard Similarity:** "
+        "Measures the overlap between unique "
+        "words present in both documents."
+    )
+
+    st.write(
+        "**Bigram Similarity:** "
+        "Compares sequences of two consecutive "
+        "words between documents."
+    )
+
+    st.write(
+        "**Stemming:** "
+        "Reduces words to their root forms "
+        "to improve text matching."
+    )
+
+    st.write(
+        "**Stopword Removal:** "
+        "Removes frequently used words that "
+        "may contribute less meaning to comparisons."
+    )
+
+    st.markdown("### Main Features")
+
+    st.markdown(
+        """
+        - Compare text and PDF documents
+        - TF-IDF, Jaccard, and Bigram similarity
+        - Sentence-level similarity analysis
+        - Exact duplicate sentence detection
+        - Common and unique keyword analysis
+        - Word frequency comparison
+        - Longest common word sequence
+        - Sentence similarity heatmap
+        - Similarity distribution charts
+        - Color-coded matching sentences
+        - Download TXT, JSON, HTML, and CSV reports
+        - Save comparison history using SQLite
+        - Search and filter saved comparisons
+        - Export complete comparison history
+        - Analyze historical similarity trends
+        - Safely delete saved history
+        """
+    )
+
+    st.markdown("### How to Use")
+
+    st.markdown(
+        """
+        1. Enter or upload two documents.
+        2. Configure the NLP settings.
+        3. Select the similarity threshold.
+        4. Click **Compare Documents**.
+        5. Review similarity scores and matching sentences.
+        6. Explore visualizations and keyword analysis.
+        7. Download reports or view comparison history.
+        """
+    )
+
+    st.markdown("### Project Objective")
+
+    st.write(
+        "The main objective of TextGuard is to "
+        "demonstrate how Natural Language Processing "
+        "can be used to analyze document similarity "
+        "and identify potentially matching passages."
+    )
+
+    st.info(
+        "TextGuard is an educational similarity "
+        "screening tool. Similarity scores alone "
+        "do not prove plagiarism."
+    )
+
+
+# ---------------------------------
+# FOOTER
+# ---------------------------------
 
 st.divider()
 
