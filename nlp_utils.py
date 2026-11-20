@@ -1,4 +1,6 @@
 import re
+# pyrefly: ignore[missing-import]
+from pypdf import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -52,3 +54,14 @@ def read_txt_file(uploaded_file):
             "utf-8",
             errors="replace"
         )
+
+
+def read_pdf_file(uploaded_file):
+    reader = PdfReader(uploaded_file)
+    pages = []
+
+    for page in reader.pages:
+        text = page.extract_text() or ""
+        pages.append(text)
+
+    return "\n".join(pages)

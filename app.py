@@ -3,7 +3,8 @@ from nlp_utils import (
     calculate_similarity,
     preprocess_text,
     classify_similarity,
-    read_txt_file
+    read_txt_file,
+    read_pdf_file
 )
 
 st.set_page_config(
@@ -15,11 +16,11 @@ st.set_page_config(
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity Detector")
 
-st.write("Compare text directly or upload TXT documents.")
+st.write("Compare text, TXT files, and PDF documents.")
 
 input_method = st.radio(
     "Choose Input Method",
-    ["Enter Text", "Upload TXT Files"],
+    ["Enter Text", "Upload Documents"],
     horizontal=True
 )
 
@@ -41,22 +42,32 @@ else:
     with col1:
         file1 = st.file_uploader(
             "Upload Document 1",
-            type=["txt"],
+            type=["txt", "pdf"],
             key="file1"
         )
 
     with col2:
         file2 = st.file_uploader(
             "Upload Document 2",
-            type=["txt"],
+            type=["txt", "pdf"],
             key="file2"
         )
 
-    if file1 is not None:
-        text1 = read_txt_file(file1)
+    def extract_uploaded_text(file):
+        if file is None:
+            return ""
 
-    if file2 is not None:
-        text2 = read_txt_file(file2)
+        try:
+            if file.name.lower().endswith(".pdf"):
+                return read_pdf_file(file)
+
+            return read_txt_file(file)
+        except Exception as error:
+            st.error(f"Unable to read {file.name}: {error}")
+            return ""
+
+    text1 = extract_uploaded_text(file1)
+    text2 = extract_uploaded_text(file2)
 
     if text1:
         with st.expander("Preview Document 1"):
