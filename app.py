@@ -13,7 +13,8 @@ from nlp_utils import (
     get_similar_sentences, plagiarism_risk_summary, similarity_distribution,
     statistics_comparison, sentence_similarity_matrix, sentence_results_csv,
     generate_text_report, word_frequency, top_keyword_frequencies,
-    similarity_coverage, generate_json_report, analysis_summary
+    similarity_coverage, generate_json_report, analysis_summary,
+    highlight_sentence
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -146,7 +147,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 f"TF-IDF: **{score:.2f}%**, Jaccard: **{jaccard:.2f}%**, "
                 f"Bigram: **{bigram:.2f}%**. "
                 f"The longest common sequence contains **{longest['length']} words**. "
-                f"With a minimum sentence length of **{min_words} words**, "
                 f"**{summary['similar_sentences']}** sentences meet the {threshold}% threshold."
             )
 
@@ -188,6 +188,23 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                     st.warning(f"Similarity: {r['similarity']:.2f}%")
             else:
                 st.success("No sentences exceed the selected threshold.")
+
+            st.subheader("Color-Coded Sentence Comparison")
+            st.caption(
+                "Red = high similarity, yellow = moderate, green = low. "
+                "Gray = below your selected threshold."
+            )
+
+            if results:
+                for r in results:
+                    st.markdown(
+                        highlight_sentence(r["sentence"], r["similarity"], threshold),
+                        unsafe_allow_html=True
+                    )
+                    if r["best_match"]:
+                        st.write("**Closest Document 2 Match:**", r["best_match"])
+            else:
+                st.info("No sentences available after filtering.")
 
         with tab3:
             st.subheader("Similarity Distribution")

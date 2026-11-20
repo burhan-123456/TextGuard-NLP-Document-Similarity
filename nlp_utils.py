@@ -3,6 +3,7 @@ import re
 import csv
 import io
 import json
+import html
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -280,6 +281,32 @@ def similarity_coverage(text1, text2, threshold=60, min_words=1):
         "total1": len(forward),
         "total2": len(reverse)
     }
+
+
+def highlight_sentence(sentence, score, threshold=60):
+    safe_sentence = html.escape(sentence)
+
+    if score >= 70:
+        background = "#ffd6d6"
+        border = "#dc2626"
+    elif score >= 40:
+        background = "#fff0c2"
+        border = "#d97706"
+    else:
+        background = "#dcfce7"
+        border = "#16a34a"
+
+    if score < threshold:
+        background = "#f1f5f9"
+        border = "#94a3b8"
+
+    return (
+        f'<div style="background:{background};border-left:5px solid {border};'
+        f'padding:12px;margin:8px 0;border-radius:6px;color:#111827;">'
+        f'<strong>{score:.2f}% similarity</strong>'
+        f'<p style="margin:6px 0 0 0;">{safe_sentence}</p>'
+        f'</div>'
+    )
 
 
 def generate_json_report(text1, text2, score, results, threshold=60,
