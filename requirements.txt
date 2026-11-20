@@ -1,4 +1,7 @@
+
 streamlit
 scikit-learn
 nltk
 pypdf
+pandas
+matplotlib
