@@ -3,7 +3,8 @@ import streamlit as st
 from nlp_utils import (
     preprocess_text, calculate_similarity, classify_similarity,
     read_txt_file, read_pdf_file, document_statistics,
-    get_common_keywords, get_unique_keywords, split_sentences
+    get_common_keywords, get_unique_keywords,
+    split_sentences, find_duplicate_sentences
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -71,19 +72,23 @@ if st.button("Compare Documents", type="primary"):
         c2.write(", ".join(unique["document2"]) or "None")
 
         st.subheader("Sentence Analysis")
-        sentences1 = split_sentences(text1)
-        sentences2 = split_sentences(text2)
+        s1, s2 = split_sentences(text1), split_sentences(text2)
         c1, c2 = st.columns(2)
-        c1.metric("Document 1 Sentences", len(sentences1))
-        c2.metric("Document 2 Sentences", len(sentences2))
+        c1.metric("Document 1 Sentences", len(s1))
+        c2.metric("Document 2 Sentences", len(s2))
 
         with st.expander("View Extracted Sentences"):
-            st.write("**Document 1**")
-            for i, sentence in enumerate(sentences1, 1):
-                st.write(f"{i}. {sentence}")
-            st.write("**Document 2**")
-            for i, sentence in enumerate(sentences2, 1):
-                st.write(f"{i}. {sentence}")
+            st.write("Document 1:", s1)
+            st.write("Document 2:", s2)
+
+        st.subheader("Exact Duplicate Sentences")
+        duplicates = find_duplicate_sentences(text1, text2)
+        if duplicates:
+            st.warning(f"{len(duplicates)} duplicate sentence(s) found.")
+            for sentence in duplicates:
+                st.write(f"🔴 {sentence}")
+        else:
+            st.success("No exact duplicate sentences found.")
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))

@@ -44,11 +44,7 @@ def read_pdf_file(file):
 
 
 def split_sentences(text):
-    return [
-        s.strip()
-        for s in re.split(r"(?<=[.!?])\s+|\n+", text)
-        if s.strip()
-    ]
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", text) if s.strip()]
 
 
 def document_statistics(text):
@@ -70,3 +66,17 @@ def get_unique_keywords(text1, text2):
     a = set(preprocess_text(text1, True, True).split())
     b = set(preprocess_text(text2, True, True).split())
     return {"document1": sorted(a - b), "document2": sorted(b - a)}
+
+
+def find_duplicate_sentences(text1, text2):
+    sentences1 = split_sentences(text1)
+    sentences2 = split_sentences(text2)
+    normalized2 = {preprocess_text(s) for s in sentences2}
+    duplicates = []
+
+    for sentence in sentences1:
+        cleaned = preprocess_text(sentence)
+        if cleaned and cleaned in normalized2 and sentence not in duplicates:
+            duplicates.append(sentence)
+
+    return duplicates
