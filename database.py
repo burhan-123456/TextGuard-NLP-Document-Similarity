@@ -43,10 +43,16 @@ def save_comparison(entry):
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             datetime.now(timezone.utc).isoformat(),
-            entry["Document 1 Words"], entry["Document 2 Words"],
-            entry["TF-IDF (%)"], entry["Jaccard (%)"], entry["Bigram (%)"],
-            entry["Level"], entry["Similar Sentences"], entry["Risk"],
-            entry["Threshold (%)"], entry["Minimum Words"]
+            entry["Document 1 Words"],
+            entry["Document 2 Words"],
+            entry["TF-IDF (%)"],
+            entry["Jaccard (%)"],
+            entry["Bigram (%)"],
+            entry["Level"],
+            entry["Similar Sentences"],
+            entry["Risk"],
+            entry["Threshold (%)"],
+            entry["Minimum Words"]
         ))
 
 
@@ -70,13 +76,17 @@ def get_history(search="", level="All", risk="All"):
 
     with get_connection() as conn:
         conn.row_factory = sqlite3.Row
-        return [dict(row) for row in conn.execute(query, params)]
+        return [
+            dict(row)
+            for row in conn.execute(query, params)
+        ]
 
 
 def delete_comparison(comparison_id):
     with get_connection() as conn:
         cursor = conn.execute(
-            "DELETE FROM comparisons WHERE id = ?", (comparison_id,)
+            "DELETE FROM comparisons WHERE id = ?",
+            (comparison_id,)
         )
         return cursor.rowcount > 0
 
@@ -88,24 +98,36 @@ def clear_history():
 
 def export_history_csv():
     records = get_history()
+
     if not records:
         return b""
 
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=records[0].keys())
+    writer = csv.DictWriter(
+        output,
+        fieldnames=records[0].keys()
+    )
+
     writer.writeheader()
     writer.writerows(records)
+
     return output.getvalue().encode("utf-8-sig")
 
 
 def export_history_json():
     records = get_history()
-    return json.dumps({
-        "project": "TextGuard",
-        "exported_at_utc": datetime.now(timezone.utc).isoformat(),
-        "total_records": len(records),
-        "comparisons": records
-    }, indent=4).encode("utf-8")
+
+    return json.dumps(
+        {
+            "project": "TextGuard",
+            "exported_at_utc": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "total_records": len(records),
+            "comparisons": records
+        },
+        indent=4
+    ).encode("utf-8")
 
 
 def history_analytics():
@@ -129,26 +151,46 @@ def history_analytics():
 
     return {
         "total": total,
+
         "average_similarity": round(
-            sum(r["tfidf"] for r in records) / total, 2
+            sum(r["tfidf"] for r in records) / total,
+            2
         ),
-        "highest_similarity": max(r["tfidf"] for r in records),
-        "lowest_similarity": min(r["tfidf"] for r in records),
+
+        "highest_similarity": max(
+            r["tfidf"] for r in records
+        ),
+
+        "lowest_similarity": min(
+            r["tfidf"] for r in records
+        ),
+
         "average_jaccard": round(
-            sum(r["jaccard"] for r in records) / total, 2
+            sum(r["jaccard"] for r in records) / total,
+            2
         ),
+
         "average_bigram": round(
-            sum(r["bigram"] for r in records) / total, 2
+            sum(r["bigram"] for r in records) / total,
+            2
         ),
+
         "total_similar_sentences": sum(
             r["similar_sentences"] for r in records
         ),
+
         "risk_distribution": dict(
-            Counter(r["risk_level"] for r in records)
+            Counter(
+                r["risk_level"] for r in records
+            )
         ),
+
         "level_distribution": dict(
-            Counter(r["similarity_level"] for r in records)
+            Counter(
+                r["similarity_level"] for r in records
+            )
         ),
+
         "trend": [
             {
                 "Comparison": r["id"],
