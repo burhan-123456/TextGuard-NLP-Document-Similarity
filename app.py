@@ -3,7 +3,7 @@ import streamlit as st
 from nlp_utils import (
     preprocess_text, calculate_similarity, classify_similarity,
     read_txt_file, read_pdf_file, document_statistics,
-    get_common_keywords, get_unique_keywords
+    get_common_keywords, get_unique_keywords, split_sentences
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
@@ -65,12 +65,25 @@ if st.button("Compare Documents", type="primary"):
         st.subheader("Unique Keywords")
         unique = get_unique_keywords(text1, text2)
         c1, c2 = st.columns(2)
-        with c1:
-            st.write("**Document 1 Only**")
-            st.write(", ".join(unique["document1"]) or "None")
-        with c2:
-            st.write("**Document 2 Only**")
-            st.write(", ".join(unique["document2"]) or "None")
+        c1.write("**Document 1 Only**")
+        c1.write(", ".join(unique["document1"]) or "None")
+        c2.write("**Document 2 Only**")
+        c2.write(", ".join(unique["document2"]) or "None")
+
+        st.subheader("Sentence Analysis")
+        sentences1 = split_sentences(text1)
+        sentences2 = split_sentences(text2)
+        c1, c2 = st.columns(2)
+        c1.metric("Document 1 Sentences", len(sentences1))
+        c2.metric("Document 2 Sentences", len(sentences2))
+
+        with st.expander("View Extracted Sentences"):
+            st.write("**Document 1**")
+            for i, sentence in enumerate(sentences1, 1):
+                st.write(f"{i}. {sentence}")
+            st.write("**Document 2**")
+            for i, sentence in enumerate(sentences2, 1):
+                st.write(f"{i}. {sentence}")
 
         with st.expander("Preprocessed Text"):
             st.write("Document 1:", preprocess_text(text1, remove_stopwords, apply_stemming))

@@ -43,12 +43,20 @@ def read_pdf_file(file):
     return "\n".join(p.extract_text() or "" for p in PdfReader(file).pages)
 
 
+def split_sentences(text):
+    return [
+        s.strip()
+        for s in re.split(r"(?<=[.!?])\s+|\n+", text)
+        if s.strip()
+    ]
+
+
 def document_statistics(text):
     return {
         "words": len(text.split()),
         "characters": len(text),
         "unique_words": len(set(preprocess_text(text).split())),
-        "sentences": len([s for s in re.split(r"[.!?]+", text) if s.strip()])
+        "sentences": len(split_sentences(text))
     }
 
 
@@ -61,7 +69,4 @@ def get_common_keywords(text1, text2):
 def get_unique_keywords(text1, text2):
     a = set(preprocess_text(text1, True, True).split())
     b = set(preprocess_text(text2, True, True).split())
-    return {
-        "document1": sorted(a - b),
-        "document2": sorted(b - a)
-    }
+    return {"document1": sorted(a - b), "document2": sorted(b - a)}
