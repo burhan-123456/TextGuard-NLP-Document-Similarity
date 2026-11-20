@@ -9,20 +9,18 @@ from database import initialize_database, save_comparison, get_history, clear_hi
 from nlp_utils import (
     preprocess_text, calculate_similarity, jaccard_similarity,
     bigram_similarity, common_bigrams, longest_common_word_sequence,
-    classify_similarity, read_txt_file, read_pdf_file,
-    get_common_keywords, get_unique_keywords, split_sentences,
-    find_duplicate_sentences, sentence_similarity_analysis,
-    plagiarism_risk_summary, similarity_distribution,
-    statistics_comparison, sentence_similarity_matrix, sentence_results_csv,
-    generate_text_report, word_frequency, top_keyword_frequencies,
-    similarity_coverage, generate_json_report, analysis_summary,
-    highlight_sentence, sort_sentence_results, search_sentence_results,
-    generate_html_report, word_level_comparison, create_history_entry
+    read_txt_file, read_pdf_file, get_common_keywords, get_unique_keywords,
+    split_sentences, find_duplicate_sentences, sentence_similarity_analysis,
+    plagiarism_risk_summary, similarity_distribution, statistics_comparison,
+    sentence_similarity_matrix, sentence_results_csv, generate_text_report,
+    word_frequency, top_keyword_frequencies, similarity_coverage,
+    generate_json_report, analysis_summary, highlight_sentence,
+    sort_sentence_results, search_sentence_results, generate_html_report,
+    word_level_comparison, create_history_entry
 )
 
 st.set_page_config(page_title="TextGuard", page_icon="🔍", layout="wide")
 initialize_database()
-
 st.title("🔍 TextGuard")
 st.subheader("NLP Document Similarity & Plagiarism Screening")
 
@@ -65,7 +63,6 @@ with c1:
     remove_stopwords = st.checkbox("Remove Stopwords")
 with c2:
     apply_stemming = st.checkbox("Apply Stemming")
-
 threshold = st.slider("Sentence Similarity Threshold (%)", 0, 100, 60)
 min_words = st.slider("Minimum Words Per Sentence", 1, 20, 1)
 keyword_limit = st.slider("Number of Top Keywords", 5, 30, 10)
@@ -85,11 +82,10 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
         sentences2 = split_sentences(text2, min_words)
         coverage = similarity_coverage(text1, text2, threshold, min_words)
 
-        entry = create_history_entry(
+        save_comparison(create_history_entry(
             text1, text2, score, threshold, min_words,
             remove_stopwords, apply_stemming
-        )
-        save_comparison(entry)
+        ))
 
         st.divider()
         st.subheader("Analysis Dashboard")
@@ -98,8 +94,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
         c2.metric("Jaccard Similarity", f"{jaccard:.2f}%")
         c3.metric("Bigram Similarity", f"{bigram:.2f}%")
         c4.metric("Exact Duplicates", summary["exact_duplicates"])
-        st.progress(min(max(score / 100.0, 0.0), 1.0))
-
+        st.progress(min(max(score / 100, 0), 1.0))
         level = summary["similarity_level"]
         if level == "High":
             st.error("High textual similarity detected.")
@@ -109,8 +104,7 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.success("Low textual similarity detected.")
 
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "Overview", "Sentence Analysis", "Visualizations",
-            "Keywords", "Reports"
+            "Overview", "Sentence Analysis", "Visualizations", "Keywords", "Reports"
         ])
 
         with tab1:
@@ -119,19 +113,17 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1.write("**Document 1**", stats["Document 1"])
             c2.write("**Document 2**", stats["Document 2"])
             st.bar_chart(pd.DataFrame(stats))
-
-            st.subheader("Similarity Method Comparison")
+            st.subheader("Similarity Methods")
             st.bar_chart(pd.DataFrame({
                 "Method": ["TF-IDF", "Jaccard", "Bigram"],
                 "Score": [score, jaccard, bigram]
             }).set_index("Method"))
-
             st.subheader("Longest Common Word Sequence")
             st.metric("Matching Words", longest["length"])
             st.info(longest["sequence"] or "None")
 
-            st.subheader("Potential Plagiarism Risk")
             risk = plagiarism_risk_summary(text1, text2, 70, min_words)
+            st.subheader("Potential Plagiarism Risk")
             c1, c2, c3 = st.columns(3)
             c1.metric("Sentences Analyzed", risk["total_sentences"])
             c2.metric("Flagged Sentences", risk["flagged_sentences"])
@@ -161,7 +153,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1, c2 = st.columns(2)
             c1.metric("Document 1 Sentences", len(sentences1))
             c2.metric("Document 2 Sentences", len(sentences2))
-
             with st.expander("Extracted Sentences"):
                 st.write("Document 1:", sentences1)
                 st.write("Document 2:", sentences2)
@@ -185,7 +176,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.dataframe(pd.DataFrame(
                 filtered, columns=["sentence", "best_match", "similarity"]
             ), use_container_width=True)
-
             st.download_button(
                 "Download Sentence CSV", sentence_results_csv(filtered),
                 "sentence_similarity.csv", "text/csv"
@@ -234,7 +224,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 fig.colorbar(image, ax=ax, label="Similarity (%)")
                 fig.tight_layout()
                 st.pyplot(fig)
-
                 buffer = io.BytesIO()
                 fig.savefig(buffer, format="png", dpi=160, bbox_inches="tight")
                 st.download_button(
@@ -266,7 +255,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             common = get_common_keywords(text1, text2)
             st.metric("Matching Keywords", len(common))
             st.write(", ".join(common) or "None")
-
             st.subheader("Unique Keywords")
             unique = get_unique_keywords(text1, text2)
             c1, c2 = st.columns(2)
@@ -274,7 +262,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             c1.write(", ".join(unique["document1"]) or "None")
             c2.write("**Document 2 Only**")
             c2.write(", ".join(unique["document2"]) or "None")
-
             st.subheader("Common Bigrams")
             st.write(", ".join(common_bigrams(text1, text2)) or "None")
 
@@ -292,18 +279,14 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
             st.subheader("Word-Level Comparison")
             word_rows = word_level_comparison(text1, text2)
             word_filter = st.selectbox(
-                "Filter Words",
-                ["All", "Common", "Document 1 Only", "Document 2 Only"]
+                "Filter Words", ["All", "Common", "Document 1 Only", "Document 2 Only"]
             )
             if word_filter != "All":
                 word_rows = [r for r in word_rows if r["Status"] == word_filter]
             st.metric("Displayed Words", len(word_rows))
             st.dataframe(pd.DataFrame(
                 word_rows,
-                columns=[
-                    "Word", "Document 1 Frequency",
-                    "Document 2 Frequency", "Status"
-                ]
+                columns=["Word", "Document 1 Frequency", "Document 2 Frequency", "Status"]
             ), use_container_width=True)
 
         with tab5:
@@ -332,7 +315,6 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
                 "Download HTML", html_report.encode("utf-8"),
                 "textguard_report.html", "text/html"
             )
-
             with st.expander("Preprocessed Text"):
                 st.write("Document 1:", preprocess_text(
                     text1, remove_stopwords, apply_stemming
@@ -346,23 +328,34 @@ if st.button("🔍 Compare Documents", type="primary", use_container_width=True)
 st.divider()
 st.subheader("📜 Saved Comparison History")
 
-history = get_history()
+# Commit 44: history search and filters
+search_id = st.text_input("Search by Comparison ID")
+c1, c2 = st.columns(2)
+with c1:
+    level_filter = st.selectbox(
+        "Similarity Level", ["All", "High", "Moderate", "Low"]
+    )
+with c2:
+    risk_filter = st.selectbox(
+        "Risk Level", ["All", "High", "Moderate", "Low", "Not Available"]
+    )
+
+history = get_history(search_id, level_filter, risk_filter)
 
 if history:
-    st.metric("Total Saved Comparisons", len(history))
+    st.metric("Matching Records", len(history))
     st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
-
     st.download_button(
-        "Download History CSV",
+        "Download Filtered History CSV",
         pd.DataFrame(history).to_csv(index=False).encode("utf-8-sig"),
         "textguard_history.csv",
         "text/csv"
     )
-
-    if st.button("Clear All History"):
-        clear_history()
-        st.rerun()
 else:
-    st.info("No saved comparisons yet.")
+    st.info("No matching comparison records found.")
 
-st.caption("Comparison history is stored locally in textguard.db.")
+if st.button("Clear All History"):
+    clear_history()
+    st.rerun()
+
+st.caption("History is stored locally in textguard.db.")

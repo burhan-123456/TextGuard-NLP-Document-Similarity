@@ -53,13 +53,27 @@ def save_comparison(entry):
         ))
 
 
-def get_history():
+def get_history(search="", level="All", risk="All"):
+    query = "SELECT * FROM comparisons WHERE 1=1"
+    params = []
+
+    if search.strip():
+        query += " AND CAST(id AS TEXT) LIKE ?"
+        params.append(f"%{search.strip()}%")
+
+    if level != "All":
+        query += " AND similarity_level = ?"
+        params.append(level)
+
+    if risk != "All":
+        query += " AND risk_level = ?"
+        params.append(risk)
+
+    query += " ORDER BY id DESC"
+
     with get_connection() as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT * FROM comparisons ORDER BY id DESC"
-        ).fetchall()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in conn.execute(query, params).fetchall()]
 
 
 def clear_history():

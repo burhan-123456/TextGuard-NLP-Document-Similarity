@@ -1,7 +1,7 @@
 
 import re
-import csv
 import io
+import csv
 import json
 import html
 from collections import Counter
@@ -33,8 +33,8 @@ def calculate_similarity(a, b, remove_stopwords=False, apply_stemming=False):
     if not a or not b:
         return 0.0
     try:
-        matrix = TfidfVectorizer().fit_transform([a, b])
-        return float(cosine_similarity(matrix[:1], matrix[1:])[0, 0] * 100)
+        vectors = TfidfVectorizer().fit_transform([a, b])
+        return float(cosine_similarity(vectors[:1], vectors[1:])[0, 0] * 100)
     except ValueError:
         return 0.0
 
@@ -57,18 +57,13 @@ def bigram_similarity(a, b, remove_stopwords=False, apply_stemming=False):
 
 
 def common_bigrams(a, b, top_n=20):
-    return [
-        " ".join(pair)
-        for pair in sorted(set(get_bigrams(a)) & set(get_bigrams(b)))[:top_n]
-    ]
+    return [" ".join(p) for p in sorted(set(get_bigrams(a)) & set(get_bigrams(b)))[:top_n]]
 
 
 def longest_common_word_sequence(a, b):
-    a = preprocess_text(a).split()
-    b = preprocess_text(b).split()
+    a, b = preprocess_text(a).split(), preprocess_text(b).split()
     previous = [0] * (len(b) + 1)
     length = end = 0
-
     for i, word in enumerate(a, 1):
         current = [0] * (len(b) + 1)
         for j, other in enumerate(b, 1):
@@ -77,7 +72,6 @@ def longest_common_word_sequence(a, b):
                 if current[j] > length:
                     length, end = current[j], i
         previous = current
-
     return {"sequence": " ".join(a[end-length:end]), "length": length}
 
 
@@ -94,9 +88,8 @@ def read_pdf_file(file):
 
 
 def split_sentences(text, min_words=1):
-    parts = re.split(r"(?<=[.!?])\s+|\n+", text)
     return [
-        s.strip() for s in parts
+        s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", text)
         if s.strip() and len(preprocess_text(s).split()) >= min_words
     ]
 
@@ -111,16 +104,14 @@ def document_statistics(text):
 
 
 def statistics_comparison(a, b):
-    return {
-        "Document 1": document_statistics(a),
-        "Document 2": document_statistics(b)
-    }
+    return {"Document 1": document_statistics(a), "Document 2": document_statistics(b)}
 
 
 def get_common_keywords(a, b):
-    x = set(preprocess_text(a, True, True).split())
-    y = set(preprocess_text(b, True, True).split())
-    return sorted(x & y)
+    return sorted(
+        set(preprocess_text(a, True, True).split()) &
+        set(preprocess_text(b, True, True).split())
+    )
 
 
 def get_unique_keywords(a, b):
@@ -130,17 +121,14 @@ def get_unique_keywords(a, b):
 
 
 def word_level_comparison(a, b):
-    x = Counter(preprocess_text(a).split())
-    y = Counter(preprocess_text(b).split())
+    x, y = Counter(preprocess_text(a).split()), Counter(preprocess_text(b).split())
     return [{
-        "Word": word,
-        "Document 1 Frequency": x[word],
-        "Document 2 Frequency": y[word],
-        "Status": (
-            "Common" if word in x and word in y
-            else "Document 1 Only" if word in x else "Document 2 Only"
-        )
-    } for word in sorted(set(x) | set(y))]
+        "Word": w,
+        "Document 1 Frequency": x[w],
+        "Document 2 Frequency": y[w],
+        "Status": "Common" if w in x and w in y else
+                  "Document 1 Only" if w in x else "Document 2 Only"
+    } for w in sorted(set(x) | set(y))]
 
 
 def find_duplicate_sentences(a, b, min_words=1):
@@ -169,44 +157,32 @@ def sentence_similarity_analysis(a, b, min_words=1):
 
 
 def sort_sentence_results(results, order="Highest First"):
-    return sorted(
-        results, key=lambda r: r["similarity"],
-        reverse=order == "Highest First"
-    )
+    return sorted(results, key=lambda r: r["similarity"], reverse=order == "Highest First")
 
 
 def search_sentence_results(results, query):
     query = query.casefold().strip()
-    return [
-        r for r in results
-        if query in r["sentence"].casefold()
-        or query in r["best_match"].casefold()
-    ]
+    return [r for r in results if query in r["sentence"].casefold()
+            or query in r["best_match"].casefold()]
 
 
 def get_similar_sentences(a, b, threshold=60, min_words=1):
-    return [
-        r for r in sentence_similarity_analysis(a, b, min_words)
-        if r["similarity"] >= threshold
-    ]
+    return [r for r in sentence_similarity_analysis(a, b, min_words)
+            if r["similarity"] >= threshold]
 
 
 def plagiarism_risk_summary(a, b, threshold=70, min_words=1):
     results = sentence_similarity_analysis(a, b, min_words)
     if not results or not split_sentences(b, min_words):
-        return {
-            "total_sentences": len(results),
-            "flagged_sentences": 0,
-            "flagged_percentage": 0.0,
-            "risk": "Not Available"
-        }
+        return {"total_sentences": len(results), "flagged_sentences": 0,
+                "flagged_percentage": 0.0, "risk": "Not Available"}
     flagged = sum(r["similarity"] >= threshold for r in results)
-    percent = round(flagged / len(results) * 100, 2)
+    percentage = round(100 * flagged / len(results), 2)
     return {
         "total_sentences": len(results),
         "flagged_sentences": flagged,
-        "flagged_percentage": percent,
-        "risk": "High" if percent >= 60 else "Moderate" if percent >= 30 else "Low"
+        "flagged_percentage": percentage,
+        "risk": "High" if percentage >= 60 else "Moderate" if percentage >= 30 else "Low"
     }
 
 
@@ -218,11 +194,8 @@ def similarity_distribution(results):
 
 
 def sentence_similarity_matrix(a, b, min_words=1):
-    return [
-        [round(calculate_similarity(x, y), 2)
-         for y in split_sentences(b, min_words)]
-        for x in split_sentences(a, min_words)
-    ]
+    return [[round(calculate_similarity(x, y), 2) for y in split_sentences(b, min_words)]
+            for x in split_sentences(a, min_words)]
 
 
 def sentence_results_csv(results):
@@ -235,8 +208,9 @@ def sentence_results_csv(results):
 
 
 def word_frequency(text, top_n=10):
-    words = [w for w in preprocess_text(text, True).split() if len(w) > 1]
-    return dict(Counter(words).most_common(top_n))
+    return dict(Counter(
+        w for w in preprocess_text(text, True).split() if len(w) > 1
+    ).most_common(top_n))
 
 
 def top_keyword_frequencies(text, top_n=10):
@@ -246,12 +220,9 @@ def top_keyword_frequencies(text, top_n=10):
 def similarity_coverage(a, b, threshold=60, min_words=1):
     forward = sentence_similarity_analysis(a, b, min_words)
     reverse = sentence_similarity_analysis(b, a, min_words)
-
     def percentage(rows):
-        return round(
-            100 * sum(r["similarity"] >= threshold for r in rows) / len(rows), 2
-        ) if rows else 0.0
-
+        return round(100 * sum(r["similarity"] >= threshold for r in rows) /
+                     len(rows), 2) if rows else 0.0
     return {
         "document1": percentage(forward),
         "document2": percentage(reverse),
@@ -263,19 +234,16 @@ def similarity_coverage(a, b, threshold=60, min_words=1):
 
 
 def highlight_sentence(sentence, score, threshold=60):
-    if score < threshold:
-        bg, border = "#f1f5f9", "#94a3b8"
-    elif score >= 70:
-        bg, border = "#ffd6d6", "#dc2626"
-    elif score >= 40:
-        bg, border = "#fff0c2", "#d97706"
-    else:
-        bg, border = "#dcfce7", "#16a34a"
+    bg, border = (
+        ("#f1f5f9", "#94a3b8") if score < threshold else
+        ("#ffd6d6", "#dc2626") if score >= 70 else
+        ("#fff0c2", "#d97706") if score >= 40 else
+        ("#dcfce7", "#16a34a")
+    )
     return (
         f'<div style="background:{bg};border-left:5px solid {border};'
         f'padding:12px;margin:8px 0;border-radius:6px;color:#111827">'
-        f'<strong>{score:.2f}% similarity</strong>'
-        f'<p>{html.escape(sentence)}</p></div>'
+        f'<strong>{score:.2f}% similarity</strong><p>{html.escape(sentence)}</p></div>'
     )
 
 
@@ -299,22 +267,16 @@ def analysis_summary(a, b, score, threshold=60, min_words=1):
 
 def create_history_entry(a, b, score, threshold=60, min_words=1,
                          remove_stopwords=False, apply_stemming=False):
-    results = sentence_similarity_analysis(a, b, min_words)
-    risk = plagiarism_risk_summary(a, b, 70, min_words)
     return {
         "Time (UTC)": datetime.now(timezone.utc).isoformat(),
         "Document 1 Words": len(a.split()),
         "Document 2 Words": len(b.split()),
         "TF-IDF (%)": round(score, 2),
-        "Jaccard (%)": jaccard_similarity(
-            a, b, remove_stopwords, apply_stemming
-        ),
-        "Bigram (%)": bigram_similarity(
-            a, b, remove_stopwords, apply_stemming
-        ),
+        "Jaccard (%)": jaccard_similarity(a, b, remove_stopwords, apply_stemming),
+        "Bigram (%)": bigram_similarity(a, b, remove_stopwords, apply_stemming),
         "Level": classify_similarity(score),
-        "Similar Sentences": sum(r["similarity"] >= threshold for r in results),
-        "Risk": risk["risk"],
+        "Similar Sentences": len(get_similar_sentences(a, b, threshold, min_words)),
+        "Risk": plagiarism_risk_summary(a, b, 70, min_words)["risk"],
         "Threshold (%)": threshold,
         "Minimum Words": min_words,
         "Remove Stopwords": remove_stopwords,
@@ -328,12 +290,8 @@ def build_report_data(a, b, score, results, threshold=60,
         "project": "TextGuard",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "overall_similarity": round(score, 2),
-        "jaccard_similarity": jaccard_similarity(
-            a, b, remove_stopwords, apply_stemming
-        ),
-        "bigram_similarity": bigram_similarity(
-            a, b, remove_stopwords, apply_stemming
-        ),
+        "jaccard_similarity": jaccard_similarity(a, b, remove_stopwords, apply_stemming),
+        "bigram_similarity": bigram_similarity(a, b, remove_stopwords, apply_stemming),
         "similarity_level": classify_similarity(score),
         "settings": {
             "remove_stopwords": remove_stopwords,
@@ -351,10 +309,7 @@ def build_report_data(a, b, score, results, threshold=60,
         "sentence_similarity": results,
         "similarity_distribution": similarity_distribution(results),
         "similarity_matrix": sentence_similarity_matrix(a, b, min_words),
-        "word_frequency": {
-            "document1": word_frequency(a),
-            "document2": word_frequency(b)
-        },
+        "word_frequency": {"document1": word_frequency(a), "document2": word_frequency(b)},
         "coverage": similarity_coverage(a, b, threshold, min_words),
         "risk_summary": plagiarism_risk_summary(a, b, 70, min_words),
         "disclaimer": "Similarity does not prove plagiarism."
@@ -362,13 +317,11 @@ def build_report_data(a, b, score, results, threshold=60,
 
 
 def generate_json_report(a, b, score, results, threshold=60,
-                         remove_stopwords=False, apply_stemming=False,
-                         min_words=1):
+                         remove_stopwords=False, apply_stemming=False, min_words=1):
     return json.dumps(
-        build_report_data(
-            a, b, score, results, threshold, min_words,
-            remove_stopwords, apply_stemming
-        ), indent=4, ensure_ascii=False
+        build_report_data(a, b, score, results, threshold, min_words,
+                          remove_stopwords, apply_stemming),
+        indent=4, ensure_ascii=False
     )
 
 
@@ -384,13 +337,10 @@ def generate_text_report(a, b, score, results, threshold=60, min_words=1):
     return "\n".join(lines)
 
 
-def generate_html_report(a, b, score, results, threshold=60,
-                         min_words=1, remove_stopwords=False,
-                         apply_stemming=False):
-    data = build_report_data(
-        a, b, score, results, threshold, min_words,
-        remove_stopwords, apply_stemming
-    )
+def generate_html_report(a, b, score, results, threshold=60, min_words=1,
+                         remove_stopwords=False, apply_stemming=False):
+    data = build_report_data(a, b, score, results, threshold, min_words,
+                             remove_stopwords, apply_stemming)
     details = "".join(
         f"<p><strong>{html.escape(key.replace('_', ' ').title())}:</strong> "
         f"{html.escape(str(value))}</p>"
@@ -405,15 +355,13 @@ def generate_html_report(a, b, score, results, threshold=60,
             "#fef3c7" if r["similarity"] >= 40 else "#dcfce7"
         )
         rows.append(
-            f'<tr style="background:{color}">'
-            f'<td>{html.escape(r["sentence"])}</td>'
+            f'<tr style="background:{color}"><td>{html.escape(r["sentence"])}</td>'
             f'<td>{html.escape(r["best_match"])}</td>'
             f'<td>{r["similarity"]:.2f}%</td></tr>'
         )
     table_rows = "".join(rows) or '<tr><td colspan="3">No matches</td></tr>'
     return f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<title>TextGuard Report</title>
+<html lang="en"><head><meta charset="UTF-8"><title>TextGuard Report</title>
 <style>
 body {{font-family:Arial;max-width:1050px;margin:30px auto;padding:20px;
 background:#f8fafc;color:#1e293b}}
